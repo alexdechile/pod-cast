@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pod-cast dashboard</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #232526 0%, #414345 100%);
+      font-family: 'Montserrat', Arial, sans-serif;
+      color: #e0e0e0;
+      min-height: 100vh;
+    }
+    .dashboard-container {
+      display: flex;
+      height: 100vh;
+      box-shadow: 0 8px 32px 0 rgba(31,38,135,0.15);
+    }
+    .sidebar {
+      width: 33.33%;
+      min-width: 320px;
+      background: linear-gradient(135deg, #232526 0%, #2c3e50 100%);
+      box-shadow: 2px 0 16px 0 rgba(80,80,80,0.12);
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 1.5rem 1.5rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .modal {
+      z-index: 1055 !important;
+    }
+    .main-panel {
+      flex: 1;
+      background: linear-gradient(135deg, #232526 0%, #434343 100%);
+      box-shadow: -2px 0 16px 0 rgba(80,80,80,0.10);
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .logo-cocava {
+      font-family: 'Anton', sans-serif;
+      font-size: 2.2rem;
+      letter-spacing: 0.08em;
+      color: #b0b3b8;
+      text-transform: lowercase;
+      background: linear-gradient(145deg, #232526 60%, #3a3a3a 100%);
+      box-shadow: inset 2px 2px 8px #18191a, inset -2px -2px 8px #44474a;
+      border-radius: 1.2rem;
+      padding: 0.5rem 1.2rem 0.5rem 1.2rem;
+      margin-bottom: 2.5rem;
+      margin-left: -0.5rem;
+      width: fit-content;
+      filter: brightness(0.85) blur(0.1px);
+      opacity: 0.85;
+      user-select: none;
+      box-sizing: border-box;
+      border: 1.5px solid #232526;
+      text-shadow: 0 2px 6px #18191a, 0 1px 0 #232526;
+    }
+    /* Sutiles sombras y colores metálicos */
+    .sidebar, .main-panel {
+      border-radius: 1.2rem;
+      box-shadow: 0 4px 24px 0 rgba(120,130,140,0.10), 0 1.5px 0 0 #232526;
+    }
+    @media (max-width: 900px) {
+      .dashboard-container {
+        flex-direction: column;
+      }
+      .sidebar {
+        width: 100%;
+        min-width: unset;
+        border-radius: 0 0 1.2rem 1.2rem;
+      }
+      .main-panel {
+        border-radius: 1.2rem 1.2rem 0 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <div class="logo-cocava">pod-cast</div>
+      <!-- Grabador de audio -->
+      <div id="audio-recorder" class="card mb-4 shadow-sm" style="background: #232526; border: none;">
+        <div class="card-body p-3">
+          <div class="d-flex align-items-center mb-3">
+            <button id="btn-permission" class="btn btn-secondary btn-sm me-2" title="Activar grabador">
+              <i class="fa-solid fa-microphone-slash"></i>
+            </button>
+            <span class="text-muted small">Activa el grabador</span>
+          </div>
+          <div id="recorder-controls" class="d-flex align-items-center mb-3" style="opacity:0.5; pointer-events:none;">
+            <button id="btn-record" class="btn btn-dark btn-lg me-2" title="Grabar">
+              <i class="fa-solid fa-circle"></i>
+            </button>
+            <button id="btn-pause" class="btn btn-dark btn-lg me-2" title="Pausar" disabled>
+              <i class="fa-solid fa-pause"></i>
+            </button>
+            <button id="btn-stop" class="btn btn-dark btn-lg me-2" title="Detener" disabled>
+              <i class="fa-solid fa-stop"></i>
+            </button>
+            <button id="btn-compress" class="btn btn-dark btn-lg me-2" title="Mejorar audio">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </button>
+            <input id="input-volume" type="range" min="0" max="1" step="0.01" value="1" class="form-range w-25 me-2" title="Volumen de grabación">
+            <span class="ms-1 text-muted"><i class="fa-solid fa-volume-high"></i></span>
+          </div>
+          <div id="waveform" style="height:60px; background:#18191a; border-radius:0.7rem; box-shadow:inset 0 2px 8px #111; margin-bottom:1rem;"></div>
+          <div class="d-flex justify-content-center mb-2">
+            <button id="btn-cortina" class="btn btn-primary btn-sm me-2" style="font-family: 'Montserrat', sans-serif; font-weight:700; letter-spacing:0.04em;">
+              <i class="fa-solid fa-music"></i> Cortina
+            </button>
+            <button id="btn-cortina-cierre" class="btn btn-secondary btn-sm me-2" style="font-family: 'Montserrat', sans-serif; font-weight:700; letter-spacing:0.04em;">
+              <i class="fa-solid fa-music"></i> Cortina cierre
+            </button>
+            <button id="btn-tecla-cassette" class="btn btn-dark btn-sm me-2" style="font-family: 'Montserrat', sans-serif; font-weight:700; letter-spacing:0.04em;">
+              <i class="fa-solid fa-circle-dot"></i> Tecla cassette
+            </button>
+            <button id="btn-pacman" class="btn btn-warning btn-sm" style="font-family: 'Montserrat', sans-serif; font-weight:700; letter-spacing:0.04em;">
+              <i class="fa-solid fa-gamepad"></i> Pac-Man
+            </button>
+          </div>
+        </div>
+      </div>
+      <!-- Playlist -->
+      <div id="playlist-section" class="card" style="background: #232526; border: none;">
+        <div class="card-body p-3">
+          <h6 class="text-secondary mb-3" style="font-family: 'Montserrat', sans-serif; font-weight:700; letter-spacing:0.04em;">Grabaciones</h6>
+          <ul id="playlist" class="list-group list-group-flush" style="background:transparent;"></ul>
+        </div>
+      </div>
+    </aside>
+    <main class="main-panel">
+      <!-- Asistente Podcast IA (integrado, seguro) -->
+      <div id="assistant-podcast" class="card mb-4 w-100" style="background: #232526; border: none; box-shadow: 0 2px 16px 0 rgba(80,80,80,0.10); border-radius: 1.2rem; max-width: 100%;">
+  <div class="card-body p-4" style="width:100%; color:#e0e0e0;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="logo-cocava" style="font-size:1.2rem; padding:0.2rem 0.7rem; margin:0; background:linear-gradient(145deg,#232526 60%,#3a3a3a 100%); color:#00c3ff; opacity:0.95; border-radius:0.7rem; border-width:1px;">
+              <i class="fa-solid fa-robot"></i> Asistente Podcast
+            </span>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-info btn-sm" id="btn-editorial-modal" data-bs-toggle="modal" data-bs-target="#editorial-modal"><i class="fa-solid fa-pen-nib"></i> Línea editorial</button>
+              <button class="btn btn-outline-secondary btn-sm" id="btn-source-modal" data-bs-toggle="modal" data-bs-target="#source-modal"><i class="fa-solid fa-book"></i> Fuente</button>
+              <button class="btn btn-outline-warning btn-sm" id="btn-knowledge-modal" data-bs-toggle="modal" data-bs-target="#knowledge-modal"><i class="fa-solid fa-star"></i> Favoritos</button>
+            </div>
+          </div>
+          <div id="assistant-chat-messages" style="height: 220px; overflow-y: auto; background: #18191a; border-radius: 0.7rem; padding: 1rem; margin-bottom: 1rem; font-size: 1rem; width:100%; color:#e0e0e0;"></div>
+          <form id="assistant-chat-form" class="d-flex gap-2" style="width:100%;">
+            <input type="text" id="assistant-chat-input" class="form-control" placeholder="Escribe tu mensaje para la IA..." autocomplete="off" style="width:100%; color:#e0e0e0; background:#232526; border:none;">
+            <button class="btn btn-primary" type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+          </form>
+        </div>
+      </div>
+      <!-- Modal Línea Editorial -->
+      <div class="modal fade" id="editorial-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content" style="background:#232526; color:#e0e0e0;">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fa-solid fa-pen-nib"></i> Línea editorial del asistente</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <textarea id="editorial-textarea" class="form-control" rows="7" placeholder="Describe aquí el tono, temas y reglas del asistente..."></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-primary" id="save-editorial-btn">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Modal Fuente -->
+      <div class="modal fade" id="source-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content" style="background:#232526; color:#e0e0e0;">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fa-solid fa-book"></i> Fuente de información</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <textarea id="source-textarea" class="form-control" rows="10" placeholder="Pega aquí la fuente de información..."></textarea>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+              <button type="button" class="btn btn-primary" id="save-source-btn">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Modal Favoritos -->
+      <div class="modal fade" id="knowledge-modal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+          <div class="modal-content" style="background:#232526; color:#e0e0e0;">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="fa-solid fa-star"></i> Respuestas favoritas</h5>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <div id="favorites-list"></div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Editor de sonido minimalista -->
+      <div id="sound-editor" class="card mt-auto w-100" style="background: #232526; border: none; box-shadow: 0 2px 16px 0 rgba(80,80,80,0.10); border-radius: 1.2rem; max-width: 100%;">
+        <div class="card-body p-4" style="width:100%; color:#e0e0e0;">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <span class="logo-cocava" style="font-size:1.2rem; padding:0.2rem 0.7rem; margin:0; background:linear-gradient(145deg,#232526 60%,#3a3a3a 100%); color:#fffc00; opacity:0.95; border-radius:0.7rem; border-width:1px;"> <i class="fa-solid fa-sliders"></i> editor de sonido</span>
+            <div class="d-flex gap-2">
+              <button id="editor-preview" class="btn btn-success"><i class="fa-solid fa-play"></i> Previsualizar</button>
+              <button id="editor-export" class="btn btn-primary"><i class="fa-solid fa-download"></i> Exportar</button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" style="color:#e0e0e0;">Selecciona una grabación:</label>
+            <select id="editor-recording-select" class="form-select mb-2" style="color:#e0e0e0; background:#232526; border:none;"></select>
+            <audio id="editor-audio-preview" controls style="width:100%; background:#18191a; border-radius:0.5rem; color:#e0e0e0;"></audio>
+          </div>
+          <div class="mb-3 d-flex align-items-center gap-3">
+            <label class="form-label mb-0" style="color:#e0e0e0;">Edición:</label>
+            <button id="editor-cut" class="btn btn-outline-danger btn-sm me-1" title="Cortar"><i class="fa-solid fa-scissors"></i></button>
+            <button id="editor-copy" class="btn btn-outline-secondary btn-sm me-1" title="Copiar"><i class="fa-solid fa-copy"></i></button>
+            <button id="editor-paste" class="btn btn-outline-success btn-sm me-1" title="Pegar"><i class="fa-solid fa-paste"></i></button>
+            <button id="editor-trim" class="btn btn-outline-warning btn-sm me-1" title="Recortar"><i class="fa-solid fa-crop"></i></button>
+            <input type="range" id="editor-trim-start" min="0" max="100" value="0" class="form-range w-25">
+            <span id="editor-trim-start-label" class="text-secondary small" style="color:#e0e0e0;">Inicio</span>
+            <input type="range" id="editor-trim-end" min="0" max="100" value="100" class="form-range w-25">
+            <span id="editor-trim-end-label" class="text-secondary small" style="color:#e0e0e0;">Fin</span>
+          </div>
+          <div class="mb-3 d-flex flex-wrap gap-3">
+            <div>
+              <label class="form-label" style="color:#e0e0e0;">Efectos:</label><br>
+              <button id="editor-robot" class="btn btn-outline-info btn-sm me-1">Robot</button>
+              <button id="editor-echo" class="btn btn-outline-info btn-sm me-1">Eco</button>
+              <button id="editor-pitch" class="btn btn-outline-info btn-sm me-1">Pitch</button>
+            <input type="range" id="editor-pitch-slider" min="-12" max="12" value="2" step="1" class="form-range w-25" style="width:100px; display:inline-block; vertical-align:middle;">
+            <span id="editor-pitch-value" class="text-secondary small" style="width:40px; display:inline-block;">+2</span>
+            <input type="range" id="editor-echo-slider" min="0" max="500" value="180" step="10" class="form-range w-25" style="width:100px; display:inline-block; vertical-align:middle;">
+            <span id="editor-echo-value" class="text-secondary small" style="width:50px; display:inline-block;">180ms</span>
+              <button id="editor-normalize" class="btn btn-outline-success btn-sm me-1">Normalizar</button>
+              <button id="editor-hpf" class="btn btn-outline-info btn-sm me-1">Pasa altos</button>
+              <button id="editor-lpf" class="btn btn-outline-info btn-sm me-1">Pasa bajos</button>
+              <button id="editor-antipop" class="btn btn-outline-info btn-sm me-1">Anti-pop</button>
+              <button id="editor-compress" class="btn btn-outline-warning btn-sm">Compresión extra</button>
+            </div>
+            <div>
+              <label class="form-label" style="color:#e0e0e0;">Multi-pista:</label><br>
+              <button id="editor-add-track" class="btn btn-outline-primary btn-sm me-1"><i class="fa-solid fa-plus"></i> Añadir pista</button>
+              <button id="editor-mix-tracks" class="btn btn-outline-success btn-sm me-1"><i class="fa-solid fa-sliders"></i> Mezclar</button>
+              <span id="editor-track-list" class="text-secondary small"></span>
+            </div>
+            <div>
+              <label class="form-label" style="color:#e0e0e0;">Agregar tonos:</label><br>
+              <button id="editor-add-cortina" class="btn btn-outline-primary btn-sm me-1">Cortina</button>
+              <button id="editor-add-cortina-cierre" class="btn btn-outline-secondary btn-sm me-1">Cierre</button>
+              <button id="editor-add-tecla" class="btn btn-outline-dark btn-sm me-1">Tecla cassette</button>
+              <button id="editor-add-pacman" class="btn btn-outline-warning btn-sm">Pac-Man</button>
+            </div>
+            <div>
+              <label class="form-label" style="color:#e0e0e0;">Música de fondo:</label><br>
+              <input type="file" id="editor-bg-music" accept="audio/*" class="form-control form-control-sm mb-1" style="max-width:180px;">
+              <input type="range" id="editor-bg-volume" min="0" max="1" step="0.01" value="0.3" class="form-range w-50">
+              <span class="text-secondary small">Volumen</span>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-4">
+          <!-- Botones movidos arriba -->
+        </div>
+      </div>
+    </main>
+  </div>
+  <!-- Modal de permiso fuera del dashboard-container para evitar stacking context -->
+  <div class="modal fade" id="permissionModal" tabindex="-1" aria-labelledby="permissionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background:#232526; color:#e0e0e0; border-radius:1rem; z-index: 2000;">
+        <div class="modal-header border-0">
+          <h5 class="modal-title" id="permissionModalLabel"><i class="fa-solid fa-microphone"></i> Permiso de micrófono</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <p>¿Deseas activar el grabador de audio? Se solicitará acceso al micrófono.</p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-primary" id="btn-allow-mic" data-bs-dismiss="modal">Permitir</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

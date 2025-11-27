@@ -1,0 +1,7 @@
+/* Estilos principales para pod-cast dashboard */
+body {
+  background: linear-gradient(135deg, #232526 0%, #414345 100%);
+  font-family: 'Montserrat', Arial, sans-serif;
+  color: #e0e0e0;
+  min-height: 100vh;
+}

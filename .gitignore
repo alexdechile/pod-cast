@@ -1,0 +1,5 @@
+# Backup directory
+backups/
+
+# Gemini CLI temp directory
+.gemini/
