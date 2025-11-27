@@ -1,5 +1,11 @@
-# Backup directory
-backups/
+# Ignore sensitive configuration files
+config.js
 
-# Gemini CLI temp directory
-.gemini/
+# Ignore irrelevant directories
+chat_exportable/
+
+# Wrangler/Cloudflare temp files
+.wrangler/
+
+# Ignore backups
+backups/
