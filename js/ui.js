@@ -2,6 +2,7 @@
 // Grabador
 const btnPermission = document.getElementById('btn-permission');
 const btnAllowMic = document.getElementById('btn-allow-mic');
+const permissionModal = new bootstrap.Modal(document.getElementById('permissionModal'));
 const recorderControls = document.getElementById('recorder-controls');
 const btnRecord = document.getElementById('btn-record');
 const btnPause = document.getElementById('btn-pause');

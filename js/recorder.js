@@ -215,9 +215,20 @@ function loadPlaylist() {
 btnPermission?.addEventListener('click', () => {
 	permissionModal.show();
 });
-btnAllowMic?.addEventListener('click', async () => {
+btnAllowMic?.addEventListener('click', async (e) => {
+	// Prevenir múltiples clics
+	if (btnAllowMic.disabled) return;
+	btnAllowMic.disabled = true;
+	btnAllowMic.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Solicitando permiso...';
+
 	try {
+		console.log('Solicitando permiso de micrófono...');
+
+		// IMPORTANTE: Esta línea pide permiso al navegador
 		let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+		console.log('Permiso concedido, configurando audio...');
+
 		if (useCompressor) {
 			const ctx = new (window.AudioContext || window.webkitAudioContext)();
 			const source = ctx.createMediaStreamSource(stream);
@@ -234,6 +245,7 @@ btnAllowMic?.addEventListener('click', async () => {
 		} else {
 			audioStream = stream;
 		}
+
 		enableRecorderControls();
 		await loadWaveSurfer();
 
@@ -245,14 +257,43 @@ btnAllowMic?.addEventListener('click', async () => {
 		}
 
 		window.toast?.success('✅ Micrófono activado correctamente');
+
 		// Agregar el timer al DOM
 		const timerContainer = document.getElementById('timer-container');
 		if (timerContainer && window.recordingTimer) {
 			timerContainer.appendChild(window.recordingTimer.element);
 		}
+
+		console.log('Micrófono configurado exitosamente');
+
 	} catch (e) {
-		window.toast?.error('❌ No se pudo acceder al micrófono. Verifica los permisos.');
 		console.error('Error al acceder al micrófono:', e);
+
+		// Restaurar botón
+		btnAllowMic.disabled = false;
+		btnAllowMic.innerHTML = '<i class="fa-solid fa-microphone"></i> Activar Micrófono';
+
+		// Mensaje de error específico
+		let errorMsg = '❌ No se pudo acceder al micrófono.';
+
+		if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+			errorMsg = '❌ Permiso denegado. Por favor, permite el acceso al micrófono en tu navegador.';
+		} else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+			errorMsg = '❌ No se encontró ningún micrófono. Verifica que esté conectado.';
+		} else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+			errorMsg = '❌ El micrófono está siendo usado por otra aplicación.';
+		} else if (e.name === 'OverconstrainedError') {
+			errorMsg = '❌ No se encontró un micrófono compatible.';
+		} else if (e.name === 'SecurityError') {
+			errorMsg = '❌ Error de seguridad. Asegúrate de estar usando HTTPS o localhost.';
+		}
+
+		window.toast?.error(errorMsg, 6000);
+
+		// Mostrar ayuda adicional
+		setTimeout(() => {
+			window.toast?.info('💡 Tip: Busca el ícono del micrófono en la barra de direcciones de tu navegador', 5000);
+		}, 1000);
 	}
 });
 
