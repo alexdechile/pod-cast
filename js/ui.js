@@ -31,7 +31,9 @@ window.UI = {
         pitchValue: document.getElementById('editor-pitch-value'),
         echoSlider: document.getElementById('editor-echo-slider'),
         echoValue: document.getElementById('editor-echo-value'),
+        echoValue: document.getElementById('editor-echo-value'),
         section: document.getElementById('sound-editor'),
+        timeline: document.getElementById('editor-timeline-container'),
         btnExport: document.getElementById('editor-export')
     },
     effects: {

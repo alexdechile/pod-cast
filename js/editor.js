@@ -143,20 +143,17 @@ async function importRecordingToProject(recordingRecord) {
  * Renders the timeline UI based on window.editorProject state
  */
 function renderTimeline() {
-  const container = window.UI.editor.section; // #sound-editor
+  const container = window.UI.editor.timeline; // #editor-timeline-container
   if (!container) return;
 
-  // Clear container logic, but keep existing structure if we want to be fancy. 
-  // For now: Clean slate.
-  // Wait! WaveSurfer used to live here. Use a sub-container?
+  // Clear container logic
   container.innerHTML = '';
 
   // Set basic styles for timeline behavior
   container.style.position = 'relative';
-  container.style.overflowX = 'auto';
+  container.style.overflowX = 'auto'; // allow scroll
   container.style.overflowY = 'hidden';
-  container.style.backgroundColor = '#18191a';
-  container.style.height = '120px'; // Fixed height
+  // Background already set in HTML class
 
   if (!window.editorProject) return;
 
