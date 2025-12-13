@@ -5,3 +5,435 @@ body {
   color: #e0e0e0;
   min-height: 100vh;
 }
+.dashboard-container {
+  display: flex;
+  height: 100vh;
+  box-shadow: 0 8px 32px 0 rgba(31,38,135,0.15);
+}
+.sidebar {
+  width: 33.33%;
+  min-width: 320px;
+  background: linear-gradient(135deg, #232526 0%, #2c3e50 100%);
+  box-shadow: 2px 0 16px 0 rgba(80,80,80,0.12);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+.modal {
+  z-index: 1055 !important;
+}
+.main-panel {
+  flex: 1;
+  background: linear-gradient(135deg, #232526 0%, #434343 100%);
+  box-shadow: -2px 0 16px 0 rgba(80,80,80,0.10);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.logo-cocava {
+  font-family: 'Anton', sans-serif;
+  font-size: 2.2rem;
+  letter-spacing: 0.08em;
+  color: #b0b3b8;
+  text-transform: lowercase;
+  background: linear-gradient(145deg, #232526 60%, #3a3a3a 100%);
+  box-shadow: inset 2px 2px 8px #18191a, inset -2px -2px 8px #44474a;
+  border-radius: 1.2rem;
+  padding: 0.5rem 1.2rem 0.5rem 1.2rem;
+  margin-bottom: 2.5rem;
+  margin-left: -0.5rem;
+  width: fit-content;
+  filter: brightness(0.85) blur(0.1px);
+  opacity: 0.85;
+  user-select: none;
+  box-sizing: border-box;
+  border: 1.5px solid #232526;
+  text-shadow: 0 2px 6px #18191a, 0 1px 0 #232526;
+}
+/* Sutiles sombras y colores metálicos */
+.sidebar, .main-panel {
+  border-radius: 1.2rem;
+  box-shadow: 0 4px 24px 0 rgba(120,130,140,0.10), 0 1.5px 0 0 #232526;
+}
+@media (max-width: 900px) {
+  .dashboard-container {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    min-width: unset;
+    border-radius: 0 0 1.2rem 1.2rem;
+  }
+  .main-panel {
+    border-radius: 1.2rem 1.2rem 0 0;
+  }
+}
+
+#audio-recorder {
+  background: #232526;
+  border: none;
+}
+
+#recorder-controls {
+  opacity:0.5;
+  pointer-events:none;
+}
+
+#waveform {
+  height:60px;
+  background:#18191a;
+  border-radius:0.7rem;
+  box-shadow:inset 0 2px 8px #111;
+  margin-bottom:1rem;
+}
+
+#btn-cortina {
+  font-family: 'Montserrat', sans-serif;
+  font-weight:700;
+  letter-spacing:0.04em;
+}
+
+#btn-cortina-cierre {
+  font-family: 'Montserrat', sans-serif;
+  font-weight:700;
+  letter-spacing:0.04em;
+}
+
+#btn-tecla-cassette {
+  font-family: 'Montserrat', sans-serif;
+  font-weight:700;
+  letter-spacing:0.04em;
+}
+
+#btn-pacman {
+  font-family: 'Montserrat', sans-serif;
+  font-weight:700;
+  letter-spacing:0.04em;
+}
+
+#playlist-section {
+  background: #232526;
+  border: none;
+}
+
+#playlist {
+  background:transparent;
+}
+
+#sound-editor {
+  background: #232526;
+  border: none;
+  box-shadow: 0 2px 16px 0 rgba(80,80,80,0.10);
+  border-radius: 1.2rem;
+  max-width: 100%;
+}
+
+#sound-editor .card-body {
+  width:100%;
+  color:#e0e0e0;
+}
+
+#sound-editor .logo-cocava {
+  font-size:1.2rem;
+  padding:0.2rem 0.7rem;
+  margin:0;
+  background:linear-gradient(145deg,#232526 60%,#3a3a3a 100%);
+  color:#fffc00;
+  opacity:0.95;
+  border-radius:0.7rem;
+  border-width:1px;
+}
+
+#editor-recording-select {
+  color:#e0e0e0;
+  background:#232526;
+  border:none;
+}
+
+#editor-audio-preview {
+  width:100%;
+  background:#18191a;
+  border-radius:0.5rem;
+  color:#e0e0e0;
+}
+
+#editor-trim-start-label, #editor-trim-end-label {
+  color:#e0e0e0;
+}
+
+#editor-pitch-slider, #editor-echo-slider {
+  width:100px;
+  display:inline-block;
+  vertical-align:middle;
+}
+
+#editor-pitch-value, #editor-echo-value {
+  width:40px;
+  display:inline-block;
+}
+
+#editor-echo-value {
+    width:50px;
+}
+
+.permission-modal .modal-content {
+  background:#232526;
+  color:#e0e0e0;
+  border-radius:1rem;
+  z-index: 2000;
+}
+
+/* === MEJORAS DE UI: Animaciones y Glassmorphism === */
+
+/* Transiciones suaves globales */
+* {
+  transition: all 0.2s ease;
+}
+
+/* Glassmorphism en cards */
+.card {
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+
+/* Botones con efectos hover */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+/* Animación de entrada para items de playlist */
+.list-group-item {
+  animation: slideInLeft 0.3s ease;
+  transition: all 0.2s ease;
+}
+
+.list-group-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  transform: translateX(4px);
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Waveform con glow effect */
+#waveform {
+  position: relative;
+  box-shadow: inset 0 2px 8px #111, 0 0 20px rgba(0, 195, 255, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+#waveform:hover {
+  box-shadow: inset 0 2px 8px #111, 0 0 30px rgba(0, 195, 255, 0.2);
+}
+
+/* Inputs con efectos */
+input[type="range"] {
+  transition: all 0.2s ease;
+}
+
+input[type="range"]:hover {
+  transform: scaleY(1.1);
+}
+
+input[type="text"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 195, 255, 0.3);
+  transform: scale(1.02);
+}
+
+/* Audio player mejorado */
+audio {
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  padding: 4px;
+}
+
+audio:hover {
+  background: rgba(0, 195, 255, 0.05);
+  transform: scale(1.01);
+}
+
+/* Logo con efecto de brillo */
+.logo-cocava {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.logo-cocava::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  animation: shine 3s infinite;
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #18191a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #00c3ff, #fffc00);
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #fffc00, #ff0066);
+}
+
+/* Pulse animation para botones importantes */
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 195, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(0, 195, 255, 0);
+  }
+}
+
+.btn-primary {
+  animation: pulse 2s infinite;
+}
+
+/* Loading spinner (para futuro uso) */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #00c3ff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Fade in para elementos */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease;
+}
+
+/* Mejora visual del modal de permisos */
+.modal-content {
+  animation: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Efecto ripple en botones */
+.btn-ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn-ripple:active::after {
+  width: 200px;
+  height: 200px;
+}

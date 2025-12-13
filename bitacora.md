@@ -12,7 +12,7 @@ Esta bitácora documenta el desarrollo del grabador de audio y playlist para la 
 - **Visualización de onda**: Durante la grabación se muestra la onda en tiempo real usando un canvas y AnalyserNode. Al reproducir grabaciones, se utiliza WaveSurfer.js para mostrar la forma de onda y permitir navegación visual.
 - **Playlist y almacenamiento**: Las grabaciones se almacenan en IndexedDB bajo el nombre de la app. Cada grabación puede ser renombrada, eliminada y reproducida desde la interfaz. Los nombres por defecto son fecha y hora.
 - **Modal de permisos**: Por políticas de navegador, el acceso al micrófono se solicita tras una acción explícita del usuario, usando un modal Bootstrap para UX clara.
-- **Código limpio y modular**: Todo el código está en archivos separados (`index.html`, `app.js`, `style.css`, `config.js`). No quedan restos de código anterior ni carpetas innecesarias.
+- **Código limpio y modular**: El código JavaScript se ha refactorizado en módulos (`app.js`, `editor.js`, `recorder.js`, `effects.js`, `utils.js`) para mejorar la mantenibilidad.
 
 ## Recomendaciones para desarrolladores
 
