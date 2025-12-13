@@ -157,8 +157,19 @@ function renderTimeline() {
 
   if (!window.editorProject) return;
 
-  // Timeline Scale: 1 second = 50px (Zoom level)
-  const pxPerSec = 50;
+  // Timeline Scale: Dynamic zoom to avoid Canvas limits (max ~32000px)
+  // Default 50px/sec, but reduce if total duration * 50 > 30000
+  // Total width = duration * pxPerSec.
+  // So pxPerSec_max = 30000 / duration.
+  let pxPerSec = 50;
+  if (window.editorProject.duration > 0) {
+    const maxPx = 30000 / window.editorProject.duration;
+    if (pxPerSec > maxPx) pxPerSec = maxPx;
+  }
+  // Min zoom to avoid collapsing to zero
+  if (pxPerSec < 1) pxPerSec = 1;
+
+  console.log(`Render Timeline: Duration=${window.editorProject.duration.toFixed(2)}s, Zoom=${pxPerSec.toFixed(2)}px/s`);
 
   window.editorProject.clips.forEach(clip => {
     const el = document.createElement('div');
@@ -174,6 +185,9 @@ function renderTimeline() {
     el.style.cursor = 'move';
     el.dataset.id = clip.id;
 
+    // Ensure visible even if empty
+    if ((clip.duration * pxPerSec) < 10) el.style.minWidth = '10px';
+
     // Clip Label
     const label = document.createElement('span');
     label.textContent = clip.name || 'Clip';
@@ -183,6 +197,9 @@ function renderTimeline() {
     label.style.color = '#fff';
     label.style.fontSize = '10px';
     label.style.pointerEvents = 'none'; // click through
+    label.style.overflow = 'hidden';
+    label.style.whiteSpace = 'nowrap';
+    label.style.maxWidth = '100%';
     el.appendChild(label);
 
     // --- HANDLES FOR TRIMMING ---
