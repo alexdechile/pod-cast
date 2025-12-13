@@ -15,7 +15,10 @@ window.UI = {
         timerContainer: document.getElementById('timer-container')
     },
     editor: {
-        audioPreview: document.getElementById('editor-audio-preview'),
+        // audioPreview: document.getElementById('editor-audio-preview'), // Deprecated
+        btnPlay: document.getElementById('editor-btn-play'),
+        btnStop: document.getElementById('editor-btn-stop'),
+        timeDisplay: document.getElementById('editor-time-display'),
         recordingSelect: document.getElementById('editor-recording-select'),
         trimStart: document.getElementById('editor-trim-start'),
         trimEnd: document.getElementById('editor-trim-end'),

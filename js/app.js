@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
 	window.editorCurrentBlob = null;
 	window.editorSelection = { start: 0, end: 1 };
 
+	// --- NUEVO MOTOR DE AUDIO (CORE) ---
+	window.audioEngine = new window.EditorCore.AudioEngine();
+	window.editorProject = new window.EditorCore.EditorProject();
+
 	// --- Inicialización ---
 	initAudioDB();
 	// Refrescar la lista del editor al cargar por primera vez

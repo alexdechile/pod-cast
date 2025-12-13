@@ -88,7 +88,12 @@
           <div class="mb-3">
             <label class="form-label">Selecciona una grabación:</label>
             <select id="editor-recording-select" class="form-select mb-2"></select>
-            <audio id="editor-audio-preview" controls></audio>
+            <div id="editor-transport" class="d-flex align-items-center gap-2 mb-2">
+              <button id="editor-btn-play" class="btn btn-primary"><i class="fa-solid fa-play"></i></button>
+              <button id="editor-btn-stop" class="btn btn-secondary"><i class="fa-solid fa-stop"></i></button>
+              <span id="editor-time-display" class="font-monospace ms-2">00:00.00</span>
+            </div>
+            <!-- <audio id="editor-audio-preview" controls></audio> -->
           </div>
           <div class="mb-3 d-flex align-items-center gap-3">
             <label class="form-label mb-0">Edición:</label>
@@ -261,6 +266,7 @@
   <script src="js/utils.js"></script>
   <script src="js/effects.js"></script>
   <script src="js/recorder.js"></script>
+  <script src="js/editor-core.js"></script>
   <script src="js/editor.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -1,34 +1,76 @@
-// --- Lógica inicial del editor de sonido minimalista ---
-function setupEditorElements() {
-  const editorRecordingSelect = window.UI.editor.recordingSelect;
-  const editorAudioPreview = window.UI.editor.audioPreview;
-  if (editorRecordingSelect && !editorRecordingSelect._listenerAdded) {
-    editorRecordingSelect.addEventListener('change', function () {
-      if (!window.dbAudio) return;
-      const id = Number(this.value);
-      if (!id) {
-        editorAudioPreview.src = '';
-        editorAudioPreview.style.display = 'none';
-        return;
+// --- LOGICA DEL EDITOR DE SONIDO (NUEVO MOTOR) ---
+
+/**
+ * Initializes the editor Logic: Listeners for recordings, buttons, etc.
+ */
+function setupEditor() {
+  setupRecordingSelect();
+  setupTransport();
+  setupGlobalKeys();
+
+  // Initial render
+  renderTimeline();
+}
+
+function setupGlobalKeys() {
+  document.addEventListener('keydown', (e) => {
+    // Delete selected clip
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      if (!window.editorProject) return;
+      // Only if editor is focused or generally?
+      // Let's check if we have a selection
+      const selectedClip = window.editorProject.clips.find(c => c.selected);
+      if (selectedClip) {
+        window.editorProject.removeClip(selectedClip.id);
+        renderTimeline();
       }
+    }
+  });
+}
+
+
+/**
+ * Syncs the 'Select Recording' dropdown with IndexedDB
+ * When a user selects a recording, it imports it as the SOLE clip (for now)
+ */
+function setupRecordingSelect() {
+  const editorRecordingSelect = window.UI.editor.recordingSelect;
+  if (!editorRecordingSelect) return;
+
+  // Load available recordings into dropdown
+  populateEditorRecordings();
+
+  editorRecordingSelect.addEventListener('change', async function () {
+    const id = Number(this.value);
+    if (!id) return;
+
+    if (!window.dbAudio) return; // DB not ready yet?
+
+    try {
       const tx = window.dbAudio.transaction(['recordings'], 'readonly');
       const store = tx.objectStore('recordings');
-      const req = store.get(id);
-      req.onsuccess = function (e) {
-        const rec = e.target.result;
-        if (rec && rec.blob) {
-          editorAudioPreview.src = URL.createObjectURL(rec.blob);
-          editorAudioPreview.style.display = 'block';
-        }
-      };
-    });
-    editorRecordingSelect._listenerAdded = true;
-  }
+      const rec = await new Promise((resolve, reject) => {
+        const req = store.get(id);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+
+      if (rec && rec.blob) {
+        importRecordingToProject(rec);
+      }
+    } catch (err) {
+      console.error("Error loading recording:", err);
+    }
+  });
 }
+
 function populateEditorRecordings() {
   const editorRecordingSelect = window.UI.editor.recordingSelect;
-  const editorAudioPreview = window.UI.editor.audioPreview;
-  if (!window.dbAudio || !editorRecordingSelect) return;
+  if (!window.dbAudio) return;
+
+  // Simple poll retry if DB not ready
+  if (populateEditorRecordings.retries > 5) return;
+
   const tx = window.dbAudio.transaction(['recordings'], 'readonly');
   const store = tx.objectStore('recordings');
   const req = store.getAll();
@@ -40,10 +82,15 @@ function populateEditorRecordings() {
       opt.value = '';
       opt.textContent = 'No hay grabaciones';
       editorRecordingSelect.appendChild(opt);
-      editorAudioPreview.src = '';
-      editorAudioPreview.style.display = 'none';
       return;
     }
+
+    // Add default placeholder
+    const ph = document.createElement('option');
+    ph.textContent = "Selecciona una grabación...";
+    ph.value = "";
+    editorRecordingSelect.appendChild(ph);
+
     recs.sort((a, b) => new Date(b.date) - new Date(a.date));
     recs.forEach(rec => {
       const opt = document.createElement('option');
@@ -51,148 +98,394 @@ function populateEditorRecordings() {
       opt.textContent = rec.name;
       editorRecordingSelect.appendChild(opt);
     });
-    editorRecordingSelect.value = recs[0].id;
-    editorAudioPreview.src = URL.createObjectURL(recs[0].blob);
-    editorAudioPreview.style.display = 'block';
+  };
+  req.onerror = () => {
+    populateEditorRecordings.retries = (populateEditorRecordings.retries || 0) + 1;
+    setTimeout(populateEditorRecordings, 1000);
   };
 }
 
-// Cargar la onda al seleccionar grabación
-window.UI.editor.recordingSelect?.addEventListener('change', function () {
-  const id = Number(this.value);
-  if (!id || !window.dbAudio) return;
-  const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-  const store = tx.objectStore('recordings');
-  const req = store.get(id);
-  req.onsuccess = async function (e) {
-    const rec = e.target.result;
-    if (rec && rec.blob) {
-      console.log('Seleccionada grabación id', id, 'blob:', rec.blob);
-      // Decodificar el blob a AudioBuffer antes de cargar en WaveSurfer
-      const arrayBuffer = await rec.blob.arrayBuffer();
-      const audioCtx = window.editorWaveSurfer ? window.editorWaveSurfer.backend.ac : new (window.AudioContext || window.webkitAudioContext)();
-      audioCtx.decodeAudioData(arrayBuffer.slice(0), (audioBuffer) => {
-        window.editorCurrentBuffer = audioBuffer;
-        window.editorCurrentBlob = rec.blob;
-        console.log('AudioBuffer decodificado y asignado:', audioBuffer);
-        // --- Asegurar que WaveSurfer está cargado ---
-        function createOrUpdateWaveSurfer() {
-          if (!window.editorWaveSurfer) {
-            window.editorWaveSurfer = WaveSurfer.create({
-              container: '#sound-editor',
-              waveColor: '#00c3ff',
-              progressColor: '#fffc00',
-              backgroundColor: '#18191a',
-              height: 80,
-              barWidth: 2,
-              barGap: 1,
-              barRadius: 2,
-              cursorColor: '#ff0066',
-              responsive: true,
-              interact: true,
-            });
-            window.editorWaveSurfer.on('region-updated', region => {
-              window.editorSelection.start = region.start / window.editorWaveSurfer.getDuration();
-              window.editorSelection.end = region.end / window.editorWaveSurfer.getDuration();
-              updateTrimSliders();
-            });
-            window.editorWaveSurfer.on('region-removed', () => {
-              window.editorSelection = { start: 0, end: 1 };
-              updateTrimSliders();
-            });
-          } else {
-            window.editorWaveSurfer.empty();
-            window.editorWaveSurfer.clearRegions && window.editorWaveSurfer.clearRegions();
-          }
-          window.editorWaveSurfer.loadBlob(rec.blob);
-          window.editorWaveSurfer.once('ready', () => {
-            if (window.editorWaveSurfer.clearRegions) window.editorWaveSurfer.clearRegions();
-            if (window.editorWaveSurfer.addRegion) {
-              window.editorWaveSurfer.addRegion({
-                start: 0,
-                end: window.editorWaveSurfer.getDuration(),
-                color: 'rgba(0,195,255,0.1)',
-                drag: true,
-                resize: true
-              });
-            }
-            window.editorSelection = { start: 0, end: 1 };
-            updateTrimSliders();
-          });
-        }
-        if (typeof WaveSurfer === 'undefined') {
-          console.log('WaveSurfer.js no está cargado, cargando...');
-          const script = document.createElement('script');
-          script.src = 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js';
-          script.onload = () => {
-            console.log('WaveSurfer.js cargado');
-            createOrUpdateWaveSurfer();
-          };
-          document.body.appendChild(script);
-        } else {
-          createOrUpdateWaveSurfer();
-        }
-      }, (err) => {
-        window.editorCurrentBuffer = null;
-        window.editorCurrentBlob = null;
-        console.error('No se pudo decodificar el audio', err);
-      });
+/**
+ * Imports a recording blob as a Clip in the project.
+ * Currently clears the project first (Single-clip workflow emulation).
+ */
+async function importRecordingToProject(recordingRecord) {
+  if (!window.audioEngine || !window.editorProject) {
+    console.error("Audio Engine or Project not initialized");
+    return;
+  }
+
+  console.log("Importing:", recordingRecord.name);
+
+  // Decode audio data
+  const arrayBuffer = await recordingRecord.blob.arrayBuffer();
+  const audioBuffer = await window.audioEngine.decodeAudioData(arrayBuffer);
+
+  // Create Clip
+  const clipId = `clip_${Date.now()}`;
+  // Store buffer in project cache
+  window.editorProject.buffers.set(clipId, audioBuffer);
+
+  const newClip = new window.EditorCore.Clip(clipId, clipId, audioBuffer.duration);
+  newClip.name = recordingRecord.name; // extra prop
+
+  // RESET Project for this basic version
+  window.editorProject.clips = [];
+  window.editorProject.playhead = 0;
+
+  window.editorProject.addClip(newClip);
+
+  console.log("Clip added, rendering timeline...");
+  renderTimeline();
+}
+
+/**
+ * Renders the timeline UI based on window.editorProject state
+ */
+function renderTimeline() {
+  const container = window.UI.editor.section; // #sound-editor
+  if (!container) return;
+
+  // Clear container logic, but keep existing structure if we want to be fancy. 
+  // For now: Clean slate.
+  // Wait! WaveSurfer used to live here. Use a sub-container?
+  container.innerHTML = '';
+
+  // Set basic styles for timeline behavior
+  container.style.position = 'relative';
+  container.style.overflowX = 'auto';
+  container.style.overflowY = 'hidden';
+  container.style.backgroundColor = '#18191a';
+  container.style.height = '120px'; // Fixed height
+
+  if (!window.editorProject) return;
+
+  // Timeline Scale: 1 second = 50px (Zoom level)
+  const pxPerSec = 50;
+
+  window.editorProject.clips.forEach(clip => {
+    const el = document.createElement('div');
+    el.className = 'editor-clip';
+    el.style.position = 'absolute';
+    el.style.left = (clip.startTime * pxPerSec) + 'px';
+    el.style.width = (clip.duration * pxPerSec) + 'px';
+    el.style.height = '100px';
+    el.style.top = '10px';
+    el.style.backgroundColor = 'rgba(0, 195, 255, 0.2)';
+    el.style.border = '1px solid #00c3ff';
+    el.style.borderRadius = '4px';
+    el.style.cursor = 'move';
+    el.dataset.id = clip.id;
+
+    // Clip Label
+    const label = document.createElement('span');
+    label.textContent = clip.name || 'Clip';
+    label.style.position = 'absolute';
+    label.style.top = '2px';
+    label.style.left = '4px';
+    label.style.color = '#fff';
+    label.style.fontSize = '10px';
+    label.style.pointerEvents = 'none'; // click through
+    el.appendChild(label);
+
+    // --- HANDLES FOR TRIMMING ---
+    const handleLeft = document.createElement('div');
+    handleLeft.className = 'clip-handle handle-left';
+    styleHandle(handleLeft, 'left');
+    el.appendChild(handleLeft);
+
+    const handleRight = document.createElement('div');
+    handleRight.className = 'clip-handle handle-right';
+    styleHandle(handleRight, 'right');
+    el.appendChild(handleRight);
+
+    setupTrimHandles(handleLeft, handleRight, el, clip, pxPerSec);
+
+    // --- WAVEFORM VISUALIZATION (Simple Canvas) ---
+    const canvas = document.createElement('canvas');
+    canvas.width = clip.duration * pxPerSec;
+    canvas.height = 100;
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.zIndex = '-1';
+    el.appendChild(canvas);
+
+    drawWaveform(canvas, window.editorProject.buffers.get(clip.bufferKey), clip);
+
+    container.appendChild(el);
+
+    // Setup Dragging (Simple implementation)
+    setupClipDrag(el, clip, pxPerSec);
+  });
+
+  // Render Playhead
+  const playhead = document.createElement('div');
+  playhead.id = 'editor-playhead';
+  playhead.style.position = 'absolute';
+  playhead.style.left = (window.editorProject.playhead * pxPerSec) + 'px';
+  playhead.style.top = '0';
+  playhead.style.bottom = '0';
+  playhead.style.width = '2px';
+  playhead.style.backgroundColor = '#ff0066';
+  playhead.style.zIndex = '10';
+  playhead.style.pointerEvents = 'none'; // Click through
+  container.appendChild(playhead);
+}
+
+function styleHandle(el, side) {
+  el.style.position = 'absolute';
+  el.style.top = '0';
+  el.style.bottom = '0';
+  el.style.width = '10px';
+  el.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+  el.style.cursor = 'col-resize';
+  el.style.zIndex = '5';
+  if (side === 'left') el.style.left = '0';
+  else el.style.right = '0';
+}
+
+function drawWaveform(canvas, buffer, clip) {
+  if (!buffer) return;
+  const ctx = canvas.getContext('2d');
+  const data = buffer.getChannelData(0);
+  const step = Math.ceil(data.length / canvas.width);
+  const amp = canvas.height / 2;
+
+  ctx.fillStyle = '#00c3ff';
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Find offset in samples
+  const startSample = Math.floor(clip.offset * buffer.sampleRate);
+  const durationSamples = Math.floor(clip.duration * buffer.sampleRate);
+  const endSample = startSample + durationSamples;
+
+  ctx.beginPath();
+  for (let i = 0; i < canvas.width; i++) {
+    let min = 1.0;
+    let max = -1.0;
+    // Map pixel to buffer index (relative to clip offset)
+    // We are drawing the *visible* part of the clip
+    // Logic fix: canvas width represents clip.duration
+    // So i=0 is clip.offset
+
+    // Correct sample index mapping:
+    // i / width = ratio
+    // sampleIndex = startSample + ratio * durationSamples
+
+    let datumIndex = Math.floor(startSample + (i / canvas.width) * durationSamples);
+    if (datumIndex >= data.length) break;
+
+    // subsample optimization
+    for (let j = 0; j < step && (datumIndex + j) < data.length; j++) {
+      const datum = data[datumIndex + j];
+      if (datum < min) min = datum;
+      if (datum > max) max = datum;
     }
-  };
-});
-
-// --- FUNCIONES GLOBALES DEL EDITOR DE SONIDO ---
-window.updateTrimSliders = function updateTrimSliders() {
-  if (!window.editorWaveSurfer) return;
-  const dur = window.editorWaveSurfer.getDuration();
-  const region = window.editorWaveSurfer.regionsList && Object.values(window.editorWaveSurfer.regionsList)[0];
-  if (region) {
-    window.UI.editor.trimStart.value = Math.round((region.start / dur) * 100);
-    window.UI.editor.trimEnd.value = Math.round((region.end / dur) * 100);
-  } else {
-    window.UI.editor.trimStart.value = 0;
-    window.UI.editor.trimEnd.value = 100;
+    ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
   }
 }
 
-window.updateEditorBuffer = function updateEditorBuffer(buffer) {
-  window.editorCurrentBuffer = buffer;
-  // Convertir a Blob para previsualizar y exportar
-  const wavBlob = bufferToWavBlob(buffer);
-  window.editorCurrentBlob = wavBlob;
-  if (window.editorWaveSurfer) {
-    window.editorWaveSurfer.empty();
-    window.editorWaveSurfer.clearRegions && window.editorWaveSurfer.clearRegions();
-    window.editorWaveSurfer.loadBlob(wavBlob);
-    window.editorWaveSurfer.once('ready', () => {
-      if (window.editorWaveSurfer.clearRegions) window.editorWaveSurfer.clearRegions();
-      if (window.editorWaveSurfer.addRegion) {
-        window.editorWaveSurfer.addRegion({
-          start: 0,
-          end: window.editorWaveSurfer.getDuration(),
-          color: 'rgba(0,195,255,0.1)',
-          drag: true,
-          resize: true
-        });
+function setupTrimHandles(left, right, el, clip, pxPerSec) {
+  function onMouseDown(e, isLeft) {
+    e.stopPropagation(); // prevent drag
+    const startX = e.clientX;
+    const initialOffset = clip.offset;
+    const initialDuration = clip.duration;
+    const initialStartTime = clip.startTime;
+
+    function onMouseMove(moveEvent) {
+      const deltaPx = moveEvent.clientX - startX;
+      const deltaSec = deltaPx / pxPerSec;
+
+      if (isLeft) {
+        // Changing Start: 
+        // offset increases (if dragging right), duration decreases, startTime increases
+        // Limit: offset cannot be < 0. duration cannot be < 0.1
+
+        let newOffset = initialOffset + deltaSec;
+        let newDuration = initialDuration - deltaSec;
+        let newStartTime = initialStartTime + deltaSec;
+
+        if (newOffset < 0) {
+          // hit start of file
+          newOffset = 0;
+          const diff = 0 - initialOffset; // negative
+          newDuration = initialDuration - diff;
+          newStartTime = initialStartTime + diff;
+        }
+
+        if (newDuration < 0.1) return; // min width
+
+        clip.offset = newOffset;
+        clip.duration = newDuration;
+        clip.startTime = newStartTime;
+
+      } else {
+        // Changing End:
+        // offset constant, duration changes (delta adds to it)
+        let newDuration = initialDuration + deltaSec;
+
+        // Limit: offset + duration cannot exceed buffer duration
+        const buffer = window.editorProject.buffers.get(clip.bufferKey);
+        if (buffer && (clip.offset + newDuration > buffer.duration)) {
+          newDuration = buffer.duration - clip.offset;
+        }
+
+        if (newDuration < 0.1) return;
+        clip.duration = newDuration;
       }
-      window.updateTrimSliders();
-    });
+      // Re-render
+      renderTimeline();
+    }
+
+    function onMouseUp() {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    }
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
   }
-  // Actualizar reproductor
-  if (window.editorAudioPreview) {
-    window.editorAudioPreview.src = URL.createObjectURL(wavBlob);
-    window.editorAudioPreview.style.display = 'block';
-  }
+
+  left.addEventListener('mousedown', (e) => onMouseDown(e, true));
+  right.addEventListener('mousedown', (e) => onMouseDown(e, false));
 }
 
-if (window.UI.editor.pitchSlider && window.UI.editor.pitchValue) {
-  window.UI.editor.pitchSlider.addEventListener('input', () => {
-    const val = parseInt(window.UI.editor.pitchSlider.value, 10);
-    window.UI.editor.pitchValue.textContent = (val > 0 ? '+' : (val < 0 ? '' : '')) + val;
+function setupTransport() {
+  window.UI.editor.btnPlay?.addEventListener('click', () => {
+    if (!window.audioEngine || !window.editorProject) return;
+    window.UI.editor.btnPlay.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    window.audioEngine.play(window.editorProject);
+    startUIUpdateLoop();
+  });
+
+  window.UI.editor.btnStop?.addEventListener('click', () => {
+    if (!window.audioEngine || !window.editorProject) return;
+    window.UI.editor.btnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
+    window.audioEngine.stop(window.editorProject);
+    window.editorProject.playhead = 0; // Reset to 0 on stop? Or Pause behavior?
+    renderTimeline(); // Update playhead pos
+    stopUIUpdateLoop();
   });
 }
-if (window.UI.editor.echoSlider && window.UI.editor.echoValue) {
-  window.UI.editor.echoSlider.addEventListener('input', () => {
-    window.UI.editor.echoValue.textContent = window.UI.editor.echoSlider.value + 'ms';
+
+function setupClipDrag(el, clip, pxPerSec) {
+  let isDragging = false;
+  let startX = 0;
+  let originalStartTime = 0;
+
+  el.addEventListener('mousedown', (e) => {
+    // Only drag if not clicking a handle (handled by stopPropagation in handles, but just in case)
+    if (e.target.classList.contains('clip-handle')) return;
+
+    isDragging = true;
+    startX = e.clientX;
+    originalStartTime = clip.startTime;
+    el.style.opacity = '0.7';
+
+    // Select clip logic
+    window.editorProject.clips.forEach(c => c.selected = false);
+    clip.selected = true;
+    renderTimeline(); // Update selection visuals (TODO add border)
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const deltaPx = e.clientX - startX;
+    const deltaSec = deltaPx / pxPerSec;
+
+    let newStartTime = originalStartTime + deltaSec;
+    if (newStartTime < 0) newStartTime = 0;
+
+    clip.startTime = newStartTime;
+    // Optimization: Don't re-render entire timeline, just move this element
+    el.style.left = (newStartTime * pxPerSec) + 'px';
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    el.style.opacity = '1';
+    window.editorProject.updateDuration();
   });
 }
+
+// --- COMPATIBILITY WITH EFFECTS SYSTEM ---
+// The effects.js uses: getSelectedBuffer, applyEffectToSelection
+window.getSelectedBuffer = function () {
+  // Return buffer of the currently selected clip, or the first one if none selected
+  if (!window.editorProject || window.editorProject.clips.length === 0) return null;
+  const selectedClip = window.editorProject.clips.find(c => c.selected) || window.editorProject.clips[0];
+  if (!selectedClip) return null;
+
+  return window.editorProject.buffers.get(selectedClip.bufferKey);
+};
+
+window.applyEffectToSelection = function (newBuffer) {
+  if (!window.editorProject) return;
+  const selectedClip = window.editorProject.clips.find(c => c.selected) || window.editorProject.clips[0];
+  if (!selectedClip) return;
+
+  // Non-destructive approach: Create a new buffer key for this "Take"
+  const newKey = selectedClip.bufferKey + '_fx_' + Date.now();
+  window.editorProject.buffers.set(newKey, newBuffer);
+
+  // Update clip to point to new buffer
+  selectedClip.bufferKey = newKey;
+  // Update duration if effect changed it (e.g. echo tail, or pitch change)
+  if (Math.abs(newBuffer.duration - selectedClip.duration) > 0.1) {
+    // If it was full length, update entire duration. 
+    // But wait, Clip has 'offset' and 'duration'.
+    // If the effect was applied to the RAW buffer, we probably want to reset offset/duration if the length changed signifcantly?
+    // Or just let it be.
+  }
+
+  console.log("Effect applied, new buffer key:", newKey);
+  renderTimeline();
+
+  // Feedback
+  window.toast?.success('Efecto aplicado exitosamente');
+};
+
+let uiLoopId = null;
+function startUIUpdateLoop() {
+  if (uiLoopId) cancelAnimationFrame(uiLoopId);
+
+  function loop() {
+    if (!window.editorProject.isPlaying) return;
+
+    // Update playhead visual
+    // We need to estimate current playhead based on AudioContext
+    const elapsed = window.audioEngine.ac.currentTime - window.audioEngine.startTimeGlobal;
+    const currentPlayhead = window.audioEngine.playheadStart + elapsed;
+    window.editorProject.playhead = currentPlayhead;
+
+    // Direct DOM update for performance
+    const ph = document.getElementById('editor-playhead');
+    if (ph) {
+      ph.style.left = (currentPlayhead * 50) + 'px';
+    }
+
+    // Update Time Display
+    if (window.UI.editor.timeDisplay) {
+      const mins = Math.floor(currentPlayhead / 60).toString().padStart(2, '0');
+      const secs = Math.floor(currentPlayhead % 60).toString().padStart(2, '0');
+      const ms = Math.floor((currentPlayhead % 1) * 100).toString().padStart(2, '0');
+      window.UI.editor.timeDisplay.textContent = `${mins}:${secs}.${ms}`;
+    }
+
+    uiLoopId = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+function stopUIUpdateLoop() {
+  if (uiLoopId) cancelAnimationFrame(uiLoopId);
+}
+
+
+// Start everything when script loads
+document.addEventListener('DOMContentLoaded', setupEditor);
