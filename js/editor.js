@@ -1,14 +1,13 @@
 // --- LOGICA DEL EDITOR DE SONIDO (NUEVO MOTOR) ---
 
 /**
- * Initializes the editor Logic: Listeners for recordings, buttons, etc.
+ * Initializes the editor Logic: Listeners for buttons, etc.
  */
 function setupEditor() {
-  setupRecordingSelect();
   setupTransport();
   setupGlobalKeys();
 
-  // Initial render
+  // Initial render (empty timeline)
   renderTimeline();
 }
 
@@ -29,109 +28,8 @@ function setupGlobalKeys() {
 }
 
 
-/**
- * Syncs the 'Select Recording' dropdown with IndexedDB
- * When a user selects a recording, it imports it as the SOLE clip (for now)
- */
-function setupRecordingSelect() {
-  const editorRecordingSelect = window.UI.editor.recordingSelect;
-  if (!editorRecordingSelect) return;
-
-  // Load available recordings into dropdown
-  populateEditorRecordings();
-
-  editorRecordingSelect.addEventListener('change', async function () {
-    const id = Number(this.value);
-    if (!id) return;
-
-    if (!window.dbAudio) return; // DB not ready yet?
-
-    try {
-      const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-      const store = tx.objectStore('recordings');
-      const rec = await new Promise((resolve, reject) => {
-        const req = store.get(id);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-
-      if (rec && rec.blob) {
-        importRecordingToProject(rec);
-      }
-    } catch (err) {
-      console.error("Error loading recording:", err);
-    }
-  });
-}
-
-function populateEditorRecordings() {
-  console.log('📝 populateEditorRecordings() llamado');
-  const editorRecordingSelect = window.UI.editor.recordingSelect;
-
-  if (!window.dbAudio) {
-    console.warn('⚠️ window.dbAudio no está listo, reintentando...');
-    if (!populateEditorRecordings.retries) populateEditorRecordings.retries = 0;
-    if (populateEditorRecordings.retries > 5) {
-      console.error('❌ Demasiados reintentos, abortando');
-      return;
-    }
-    populateEditorRecordings.retries++;
-    setTimeout(populateEditorRecordings, 500);
-    return;
-  }
-
-  try {
-    const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-    const store = tx.objectStore('recordings');
-    const req = store.getAll();
-
-    req.onsuccess = function (e) {
-      const recs = e.target.result;
-      console.log('📝 Grabaciones encontradas en DB:', recs.length);
-
-      editorRecordingSelect.innerHTML = '';
-
-      if (recs.length === 0) {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = 'No hay grabaciones';
-        editorRecordingSelect.appendChild(opt);
-        console.log('📝 No hay grabaciones disponibles');
-        return;
-      }
-
-      // Add default placeholder
-      const ph = document.createElement('option');
-      ph.textContent = "Selecciona una grabación...";
-      ph.value = "";
-      editorRecordingSelect.appendChild(ph);
-
-      recs.sort((a, b) => new Date(b.date) - new Date(a.date));
-      recs.forEach(rec => {
-        const opt = document.createElement('option');
-        opt.value = rec.id;
-        opt.textContent = rec.name;
-        editorRecordingSelect.appendChild(opt);
-        console.log('  ✅ Opción agregada al dropdown:', rec.name);
-      });
-
-      console.log('📝 Dropdown del editor actualizado con', recs.length, 'grabaciones');
-      // Reset retry counter on success
-      populateEditorRecordings.retries = 0;
-    };
-
-    req.onerror = (e) => {
-      console.error('❌ Error al leer grabaciones desde DB:', e);
-      populateEditorRecordings.retries = (populateEditorRecordings.retries || 0) + 1;
-      if (populateEditorRecordings.retries <= 5) {
-        console.warn('⚠️ Reintentando... (intento', populateEditorRecordings.retries, 'de 5)');
-        setTimeout(populateEditorRecordings, 1000);
-      }
-    };
-  } catch (err) {
-    console.error('❌ Excepción en populateEditorRecordings:', err);
-  }
-}
+// REMOVED: setupRecordingSelect() and populateEditorRecordings()
+// Recordings are now added directly from the recorder list via addRecordingToEditor()
 
 /**
  * Imports a recording blob as a Clip in the project.
@@ -172,7 +70,12 @@ async function importRecordingToProject(recordingRecord) {
     const newClip = new window.EditorCore.Clip(clipId, clipId, audioBuffer.duration);
     newClip.name = recordingRecord.name;
 
-    // RESET Project for this basic version
+    // DEPRECATED: This function was used with the old dropdown workflow
+    // Now we use addRecordingToEditor() from recorder.js for multi-clip editing
+    // Keeping for backward compatibility but clearing clips is not recommended
+    console.warn('⚠️ Using deprecated importRecordingToProject(). Use addRecordingToEditor() instead.');
+
+    // RESET Project (old behavior)
     window.editorProject.clips = [];
     window.editorProject.playhead = 0;
 
@@ -233,6 +136,12 @@ function renderTimeline() {
 
   const totalCanvasWidth = window.editorProject.duration * pxPerSec;
   console.log(`📊 Render Timeline: Duration=${window.editorProject.duration.toFixed(2)}s, Zoom=${pxPerSec.toFixed(2)}px/s, Canvas width=${totalCanvasWidth.toFixed(0)}px`);
+
+  // Update clip counter
+  const clipCountEl = document.getElementById('editor-clip-count');
+  if (clipCountEl) {
+    clipCountEl.textContent = window.editorProject.clips.length;
+  }
 
   window.editorProject.clips.forEach(clip => {
     const el = document.createElement('div');

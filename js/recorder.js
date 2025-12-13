@@ -149,7 +149,10 @@ function loadPlaylist() {
 							font-family: 'Montserrat', sans-serif;
 							font-size: 13px;
 						">
-						<button class="btn btn-outline-danger btn-sm delete-recording" style="padding: 6px 12px;">
+						<button class="btn btn-outline-success btn-sm add-to-editor" style="padding: 6px 12px;" title="Agregar al editor">
+							<i class="fa fa-plus"></i>
+						</button>
+						<button class="btn btn-outline-danger btn-sm delete-recording" style="padding: 6px 12px;" title="Eliminar">
 							<i class="fa fa-trash"></i>
 						</button>
 					</div>
@@ -182,6 +185,10 @@ function loadPlaylist() {
 					data.name = newName;
 					store2.put(data);
 				};
+			});
+			// Agregar al editor
+			li.querySelector('.add-to-editor').addEventListener('click', function () {
+				addRecordingToEditor(rec);
 			});
 			// Eliminar con confirmación
 			li.querySelector('.delete-recording').addEventListener('click', async function () {
@@ -231,8 +238,6 @@ function loadPlaylist() {
 			});
 			playlistUl.appendChild(li);
 		});
-		// Refrescar el editor también
-		populateEditorRecordings();
 	};
 }
 
@@ -684,4 +689,70 @@ if (window.UI.tones.btnCortina) {
 		});
 		setTimeout(() => ctx.close(), durations.reduce((a, b) => a + b, 0) * 1000 + 200);
 	});
+}
+
+/**
+ * Agrega una grabación al editor como un nuevo clip
+ * Esta función permite composición multi-clip en el editor
+ */
+async function addRecordingToEditor(recordingRecord) {
+if (!window.audioEngine || !window.editorProject) {
+window.toast?.error("Error: Motor de audio no inicializado");
+console.error("AudioEngine or EditorProject not initialized");
+return;
+}
+
+const toastId = window.toast?.info(`Agregando "${recordingRecord.name}" al editor...`, 0);
+
+try {
+console.log("✅ Adding to editor:", recordingRecord.name);
+
+if (window.audioEngine.ac.state === 'suspended') {
+await window.audioEngine.ac.resume();
+}
+
+// Decode audio data
+const arrayBuffer = await recordingRecord.blob.arrayBuffer();
+if (arrayBuffer.byteLength === 0) {
+throw new Error("El archivo de audio está vacío.");
+}
+
+const audioBuffer = await window.audioEngine.decodeAudioData(arrayBuffer);
+console.log("  Audio decoded. Duration:", audioBuffer.duration.toFixed(2), "s");
+
+// Create unique clip ID
+const clipId = `clip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Store buffer in project cache
+window.editorProject.buffers.set(clipId, audioBuffer);
+
+// Create new clip
+const newClip = new window.EditorCore.Clip(clipId, clipId, audioBuffer.duration);
+newClip.name = recordingRecord.name;
+
+// Calculate start time (place after last clip)
+const lastClipEnd = window.editorProject.clips.reduce(
+(max, c) => Math.max(max, c.startTime + c.duration), 
+0
+);
+newClip.startTime = lastClipEnd;
+
+// Add clip WITHOUT clearing existing clips (multi-clip editing)
+window.editorProject.addClip(newClip);
+
+console.log(`  ✅ Clip added at ${lastClipEnd.toFixed(2)}s. Total clips:`, window.editorProject.clips.length);
+
+// Re-render timeline
+if (typeof renderTimeline === 'function') {
+renderTimeline();
+} else {
+console.warn('⚠️ renderTimeline() not available');
+}
+
+window.toast?.success(`"${recordingRecord.name}" agregado al editor`);
+
+} catch (e) {
+console.error("❌ Add to editor failed:", e);
+window.toast?.error("Error al agregar: " + e.message);
+}
 }
