@@ -216,17 +216,23 @@ function renderTimeline() {
 
   // Timeline Scale: Dynamic zoom to avoid Canvas limits (max ~32000px)
   // Default 50px/sec, but reduce if total duration * 50 > 30000
-  // Total width = duration * pxPerSec.
-  // So pxPerSec_max = 30000 / duration.
+  // For better visibility, minimum zoom is 10px/sec (not 1px/sec)
   let pxPerSec = 50;
   if (window.editorProject.duration > 0) {
-    const maxPx = 30000 / window.editorProject.duration;
-    if (pxPerSec > maxPx) pxPerSec = maxPx;
+    // Max canvas width we want to use
+    const maxCanvasWidth = 30000;
+    const calculatedZoom = maxCanvasWidth / window.editorProject.duration;
+    if (pxPerSec > calculatedZoom) pxPerSec = calculatedZoom;
   }
-  // Min zoom to avoid collapsing to zero
-  if (pxPerSec < 1) pxPerSec = 1;
+  // Min zoom to ensure visibility (10px/sec minimum for long recordings)
+  const minZoom = 10;
+  if (pxPerSec < minZoom) {
+    pxPerSec = minZoom;
+    console.warn(`⚠️ Grabación muy larga. Zoom limitado a ${minZoom}px/s. El canvas será de ${(window.editorProject.duration * pxPerSec).toFixed(0)}px`);
+  }
 
-  console.log(`Render Timeline: Duration=${window.editorProject.duration.toFixed(2)}s, Zoom=${pxPerSec.toFixed(2)}px/s`);
+  const totalCanvasWidth = window.editorProject.duration * pxPerSec;
+  console.log(`📊 Render Timeline: Duration=${window.editorProject.duration.toFixed(2)}s, Zoom=${pxPerSec.toFixed(2)}px/s, Canvas width=${totalCanvasWidth.toFixed(0)}px`);
 
   window.editorProject.clips.forEach(clip => {
     const el = document.createElement('div');
@@ -274,7 +280,8 @@ function renderTimeline() {
 
     // --- WAVEFORM VISUALIZATION (Simple Canvas) ---
     const canvas = document.createElement('canvas');
-    canvas.width = clip.duration * pxPerSec;
+    const canvasWidth = Math.floor(clip.duration * pxPerSec);
+    canvas.width = canvasWidth;
     canvas.height = 100;
     canvas.style.width = '100%';
     canvas.style.height = '100%';
@@ -284,6 +291,7 @@ function renderTimeline() {
     canvas.style.zIndex = '-1';
     el.appendChild(canvas);
 
+    console.log(`🎨 Drawing waveform: clip duration=${clip.duration.toFixed(2)}s, canvas width=${canvasWidth}px, zoom=${pxPerSec.toFixed(2)}px/s`);
     drawWaveform(canvas, window.editorProject.buffers.get(clip.bufferKey), clip);
 
     container.appendChild(el);
@@ -319,10 +327,13 @@ function styleHandle(el, side) {
 }
 
 function drawWaveform(canvas, buffer, clip) {
-  if (!buffer) return;
+  if (!buffer) {
+    console.warn('⚠️ No buffer available for waveform');
+    return;
+  }
+
   const ctx = canvas.getContext('2d');
   const data = buffer.getChannelData(0);
-  const step = Math.ceil(data.length / canvas.width);
   const amp = canvas.height / 2;
 
   ctx.fillStyle = '#00c3ff';
@@ -331,31 +342,35 @@ function drawWaveform(canvas, buffer, clip) {
   // Find offset in samples
   const startSample = Math.floor(clip.offset * buffer.sampleRate);
   const durationSamples = Math.floor(clip.duration * buffer.sampleRate);
-  const endSample = startSample + durationSamples;
+
+  // Calculate how many samples per pixel
+  const samplesPerPixel = durationSamples / canvas.width;
+
+  console.log(`🎨 Waveform: canvas=${canvas.width}x${canvas.height}, samples=${durationSamples}, samples/px=${samplesPerPixel.toFixed(2)}`);
 
   ctx.beginPath();
   for (let i = 0; i < canvas.width; i++) {
     let min = 1.0;
     let max = -1.0;
-    // Map pixel to buffer index (relative to clip offset)
-    // We are drawing the *visible* part of the clip
-    // Logic fix: canvas width represents clip.duration
-    // So i=0 is clip.offset
 
-    // Correct sample index mapping:
-    // i / width = ratio
-    // sampleIndex = startSample + ratio * durationSamples
+    // Calculate the range of samples for this pixel
+    const sampleStart = Math.floor(startSample + (i * samplesPerPixel));
+    const sampleEnd = Math.floor(startSample + ((i + 1) * samplesPerPixel));
 
-    let datumIndex = Math.floor(startSample + (i / canvas.width) * durationSamples);
-    if (datumIndex >= data.length) break;
+    // Ensure we don't exceed buffer bounds
+    if (sampleStart >= data.length) break;
 
-    // subsample optimization
-    for (let j = 0; j < step && (datumIndex + j) < data.length; j++) {
-      const datum = data[datumIndex + j];
+    // Find min/max in the sample range for this pixel
+    for (let j = sampleStart; j < Math.min(sampleEnd, data.length); j++) {
+      const datum = data[j];
       if (datum < min) min = datum;
       if (datum > max) max = datum;
     }
-    ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+
+    // Draw vertical line representing the amplitude range
+    const height = Math.max(1, (max - min) * amp);
+    const y = (1 + min) * amp;
+    ctx.fillRect(i, y, 1, height);
   }
 }
 
@@ -427,7 +442,22 @@ function setupTrimHandles(left, right, el, clip, pxPerSec) {
 
 function setupTransport() {
   window.UI.editor.btnPlay?.addEventListener('click', () => {
-    if (!window.audioEngine || !window.editorProject) return;
+    if (!window.audioEngine || !window.editorProject) {
+      console.error('❌ AudioEngine or EditorProject not initialized');
+      return;
+    }
+
+    console.log('▶️ Play button clicked');
+    console.log('  Clips:', window.editorProject.clips.length);
+    console.log('  Playhead:', window.editorProject.playhead);
+    console.log('  Duration:', window.editorProject.duration);
+
+    if (window.editorProject.clips.length === 0) {
+      console.warn('⚠️ No clips to play');
+      window.toast?.warning('No hay audio cargado para reproducir');
+      return;
+    }
+
     window.UI.editor.btnPlay.innerHTML = '<i class="fa-solid fa-pause"></i>';
     window.audioEngine.play(window.editorProject);
     startUIUpdateLoop();
@@ -435,13 +465,17 @@ function setupTransport() {
 
   window.UI.editor.btnStop?.addEventListener('click', () => {
     if (!window.audioEngine || !window.editorProject) return;
+
+    console.log('⏹️ Stop button clicked');
     window.UI.editor.btnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
     window.audioEngine.stop(window.editorProject);
-    window.editorProject.playhead = 0; // Reset to 0 on stop? Or Pause behavior?
+    window.editorProject.playhead = 0; // Reset to 0 on stop
     renderTimeline(); // Update playhead pos
     stopUIUpdateLoop();
   });
 }
+
+
 
 function setupClipDrag(el, clip, pxPerSec) {
   let isDragging = false;
