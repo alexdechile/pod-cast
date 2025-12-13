@@ -23,24 +23,29 @@ function initAudioDB() {
 }
 
 function saveRecording(blob, name) {
+	console.log('💾 saveRecording() iniciado, blob size:', blob.size);
 	return new Promise(async (resolve, reject) => {
 		if (!window.dbAudio) {
+			console.error('❌ window.dbAudio no disponible');
 			window.toast?.error('Error: Base de datos no disponible');
 			reject(new Error('DB not available'));
 			return;
 		}
 		try {
+			console.log('⏱️ Obteniendo duración del audio...');
 			// Obtener duración del audio con timeout de 3 segundos
 			const durationPromise = getAudioDuration(blob);
 			const timeoutPromise = new Promise(r => setTimeout(() => r(0), 3000));
 			// Si falla o tarda mucho, usa 0 (se corregirá al reproducir)
 			const duration = await Promise.race([durationPromise, timeoutPromise]);
+			console.log('⏱️ Duración obtenida:', duration, 'segundos');
 
 			const tx = window.dbAudio.transaction(['recordings'], 'readwrite');
 			const store = tx.objectStore('recordings');
 			const now = new Date();
 			const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
 
+			console.log('💾 Guardando en IndexedDB con nombre:', defaultName);
 			// Guardar con metadata
 			const req = store.add({
 				name: defaultName,
@@ -52,17 +57,22 @@ function saveRecording(blob, name) {
 			});
 
 			tx.oncomplete = () => {
+				console.log('✅ Transacción DB completada exitosamente');
+				console.log('🔄 Llamando a loadPlaylist()...');
 				loadPlaylist();
+
 				const sizeStr = window.playlistManager?.formatSize(blob.size) || '';
 				const durStr = window.playlistManager?.formatDuration(duration) || '';
 				window.toast?.success(`Grabación guardada: ${durStr} • ${sizeStr}`);
 				resolve();
 			};
 			tx.onerror = (e) => {
+				console.error('❌ Error en transacción DB:', e.target.error);
 				window.toast?.error('Error al guardar la grabación');
 				reject(e.target.error);
 			};
 		} catch (e) {
+			console.error('❌ Excepción en saveRecording:', e);
 			window.toast?.error('Error al guardar: ' + e.message);
 			reject(e);
 		}
@@ -402,16 +412,34 @@ window.UI.recorder.btnRecord?.addEventListener('click', async () => {
 		mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
 		mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
 		mediaRecorder.onstop = async () => {
+			console.log('🔴 STOP: Iniciando proceso de guardado...');
+			console.log('🔴 audioChunks.length:', audioChunks.length);
+
 			// UI Feedback: Guardando
 			window.UI.recorder.btnRecord.disabled = true;
 			window.UI.recorder.btnRecord.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 			window.UI.recorder.btnRecord.title = 'Guardando...';
 
 			const blob = new Blob(audioChunks, { type: 'audio/webm' });
+			console.log('🔴 Blob creado, tamaño:', blob.size, 'bytes');
+
 			try {
+				// IMPORTANTE: Await para asegurar que se complete
 				await saveRecording(blob);
+				console.log('✅ saveRecording() completado');
+
+				// Forzar actualización de la UI con un pequeño delay
+				setTimeout(() => {
+					console.log('🔄 Forzando actualización de UI...');
+					loadPlaylist();
+					if (typeof populateEditorRecordings === 'function') {
+						populateEditorRecordings();
+					}
+				}, 100);
+
 			} catch (err) {
-				console.error("Save failed", err);
+				console.error("❌ Error al guardar:", err);
+				window.toast?.error('Error al guardar la grabación: ' + err.message);
 			}
 
 			audioChunks = [];
@@ -436,7 +464,6 @@ window.UI.recorder.btnRecord?.addEventListener('click', async () => {
 			if (window.vuMeter) {
 				window.vuMeter.stop();
 			}
-			window.toast?.success('✅ Grabación finalizada y guardada');
 
 			if (window.WaveSurfer && window.UI.recorder.waveformDiv) {
 				window.UI.recorder.waveformDiv.innerHTML = '';

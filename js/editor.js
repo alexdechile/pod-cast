@@ -65,44 +65,72 @@ function setupRecordingSelect() {
 }
 
 function populateEditorRecordings() {
+  console.log('📝 populateEditorRecordings() llamado');
   const editorRecordingSelect = window.UI.editor.recordingSelect;
-  if (!window.dbAudio) return;
 
-  // Simple poll retry if DB not ready
-  if (populateEditorRecordings.retries > 5) return;
-
-  const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-  const store = tx.objectStore('recordings');
-  const req = store.getAll();
-  req.onsuccess = function (e) {
-    const recs = e.target.result;
-    editorRecordingSelect.innerHTML = '';
-    if (recs.length === 0) {
-      const opt = document.createElement('option');
-      opt.value = '';
-      opt.textContent = 'No hay grabaciones';
-      editorRecordingSelect.appendChild(opt);
+  if (!window.dbAudio) {
+    console.warn('⚠️ window.dbAudio no está listo, reintentando...');
+    if (!populateEditorRecordings.retries) populateEditorRecordings.retries = 0;
+    if (populateEditorRecordings.retries > 5) {
+      console.error('❌ Demasiados reintentos, abortando');
       return;
     }
+    populateEditorRecordings.retries++;
+    setTimeout(populateEditorRecordings, 500);
+    return;
+  }
 
-    // Add default placeholder
-    const ph = document.createElement('option');
-    ph.textContent = "Selecciona una grabación...";
-    ph.value = "";
-    editorRecordingSelect.appendChild(ph);
+  try {
+    const tx = window.dbAudio.transaction(['recordings'], 'readonly');
+    const store = tx.objectStore('recordings');
+    const req = store.getAll();
 
-    recs.sort((a, b) => new Date(b.date) - new Date(a.date));
-    recs.forEach(rec => {
-      const opt = document.createElement('option');
-      opt.value = rec.id;
-      opt.textContent = rec.name;
-      editorRecordingSelect.appendChild(opt);
-    });
-  };
-  req.onerror = () => {
-    populateEditorRecordings.retries = (populateEditorRecordings.retries || 0) + 1;
-    setTimeout(populateEditorRecordings, 1000);
-  };
+    req.onsuccess = function (e) {
+      const recs = e.target.result;
+      console.log('📝 Grabaciones encontradas en DB:', recs.length);
+
+      editorRecordingSelect.innerHTML = '';
+
+      if (recs.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'No hay grabaciones';
+        editorRecordingSelect.appendChild(opt);
+        console.log('📝 No hay grabaciones disponibles');
+        return;
+      }
+
+      // Add default placeholder
+      const ph = document.createElement('option');
+      ph.textContent = "Selecciona una grabación...";
+      ph.value = "";
+      editorRecordingSelect.appendChild(ph);
+
+      recs.sort((a, b) => new Date(b.date) - new Date(a.date));
+      recs.forEach(rec => {
+        const opt = document.createElement('option');
+        opt.value = rec.id;
+        opt.textContent = rec.name;
+        editorRecordingSelect.appendChild(opt);
+        console.log('  ✅ Opción agregada al dropdown:', rec.name);
+      });
+
+      console.log('📝 Dropdown del editor actualizado con', recs.length, 'grabaciones');
+      // Reset retry counter on success
+      populateEditorRecordings.retries = 0;
+    };
+
+    req.onerror = (e) => {
+      console.error('❌ Error al leer grabaciones desde DB:', e);
+      populateEditorRecordings.retries = (populateEditorRecordings.retries || 0) + 1;
+      if (populateEditorRecordings.retries <= 5) {
+        console.warn('⚠️ Reintentando... (intento', populateEditorRecordings.retries, 'de 5)');
+        setTimeout(populateEditorRecordings, 1000);
+      }
+    };
+  } catch (err) {
+    console.error('❌ Excepción en populateEditorRecordings:', err);
+  }
 }
 
 /**
