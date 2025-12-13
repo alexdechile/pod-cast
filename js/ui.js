@@ -1,44 +1,62 @@
-// --- ELEMENTOS DEL DOM ---
-// Grabador
-const btnPermission = document.getElementById('btn-permission');
-const btnAllowMic = document.getElementById('btn-allow-mic');
-const permissionModal = new bootstrap.Modal(document.getElementById('permissionModal'));
-const recorderControls = document.getElementById('recorder-controls');
-const btnRecord = document.getElementById('btn-record');
-const btnPause = document.getElementById('btn-pause');
-const btnStop = document.getElementById('btn-stop');
-const btnCompress = document.getElementById('btn-compress');
-const inputVolume = document.getElementById('input-volume');
-const waveformDiv = document.getElementById('waveform');
-const playlistUl = document.getElementById('playlist');
+// --- ELEMENTOS DEL DOM CENTRALIZADOS ---
+window.UI = {
+    recorder: {
+        btnPermission: document.getElementById('btn-permission'),
+        btnAllowMic: document.getElementById('btn-allow-mic'),
+        permissionModalElement: document.getElementById('permissionModal'),
+        recorderControls: document.getElementById('recorder-controls'),
+        btnRecord: document.getElementById('btn-record'),
+        btnPause: document.getElementById('btn-pause'),
+        btnStop: document.getElementById('btn-stop'),
+        btnCompress: document.getElementById('btn-compress'),
+        inputVolume: document.getElementById('input-volume'),
+        waveformDiv: document.getElementById('waveform'),
+        playlistUl: document.getElementById('playlist'),
+        timerContainer: document.getElementById('timer-container')
+    },
+    editor: {
+        audioPreview: document.getElementById('editor-audio-preview'),
+        recordingSelect: document.getElementById('editor-recording-select'),
+        trimStart: document.getElementById('editor-trim-start'),
+        trimEnd: document.getElementById('editor-trim-end'),
+        btnCut: document.getElementById('editor-cut'),
+        btnCopy: document.getElementById('editor-copy'),
+        btnPaste: document.getElementById('editor-paste'),
+        btnTrim: document.getElementById('editor-trim'),
+        trackList: document.getElementById('editor-track-list'),
+        pitchSlider: document.getElementById('editor-pitch-slider'),
+        pitchValue: document.getElementById('editor-pitch-value'),
+        echoSlider: document.getElementById('editor-echo-slider'),
+        echoValue: document.getElementById('editor-echo-value'),
+        section: document.getElementById('sound-editor'),
+        btnExport: document.getElementById('editor-export')
+    },
+    effects: {
+        btnRobot: document.getElementById('editor-robot'),
+        btnEcho: document.getElementById('editor-echo'),
+        btnPitch: document.getElementById('editor-pitch'),
+        btnNormalize: document.getElementById('editor-normalize'),
+        btnHPF: document.getElementById('editor-hpf'),
+        btnLPF: document.getElementById('editor-lpf'),
+        btnAntipop: document.getElementById('editor-antipop'),
+        btnCompress: document.getElementById('editor-compress')
+    },
+    tones: {
+        btnPacman: document.getElementById('btn-pacman'),
+        btnTeclaCassette: document.getElementById('btn-tecla-cassette'),
+        btnCortinaCierre: document.getElementById('btn-cortina-cierre'),
+        btnCortina: document.getElementById('btn-cortina')
+    },
+    modals: {
+        // Inicializar instancia de Bootstrap solo cuando sea necesario
+        _permissionModal: null,
+        get permissionModal() {
+            if (!this._permissionModal && window.UI.recorder.permissionModalElement) {
+                this._permissionModal = new bootstrap.Modal(window.UI.recorder.permissionModalElement);
+            }
+            return this._permissionModal;
+        }
+    }
+};
 
-// Editor
-const editorAudioPreview = document.getElementById('editor-audio-preview');
-const editorRecordingSelect = document.getElementById('editor-recording-select');
-const editorTrimStart = document.getElementById('editor-trim-start');
-const editorTrimEnd = document.getElementById('editor-trim-end');
-const editorCutBtn = document.getElementById('editor-cut');
-const editorCopyBtn = document.getElementById('editor-copy');
-const editorPasteBtn = document.getElementById('editor-paste');
-const editorTrimBtn = document.getElementById('editor-trim');
-const editorTrackList = document.getElementById('editor-track-list');
-const editorPitchSlider = document.getElementById('editor-pitch-slider');
-const editorPitchValue = document.getElementById('editor-pitch-value');
-const editorEchoSlider = document.getElementById('editor-echo-slider');
-const editorEchoValue = document.getElementById('editor-echo-value');
 
-// Efectos
-const editorRobotBtn = document.getElementById('editor-robot');
-const editorEchoBtn = document.getElementById('editor-echo');
-const editorPitchBtn = document.getElementById('editor-pitch');
-const editorNormalizeBtn = document.getElementById('editor-normalize');
-const editorHPFBtn = document.getElementById('editor-hpf');
-const editorLPFBtn = document.getElementById('editor-lpf');
-const editorAntipopBtn = document.getElementById('editor-antipop');
-const editorCompressBtn = document.getElementById('editor-compress');
-
-// Tonos
-const btnPacman = document.getElementById('btn-pacman');
-const btnTeclaCassette = document.getElementById('btn-tecla-cassette');
-const btnCortinaCierre = document.getElementById('btn-cortina-cierre');
-const btnCortina = document.getElementById('btn-cortina');

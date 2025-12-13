@@ -16,9 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// Mostrar modal de permisos automáticamente al cargar
 	setTimeout(() => {
-		const permissionModal = bootstrap.Modal.getInstance(document.getElementById('permissionModal')) ||
-			new bootstrap.Modal(document.getElementById('permissionModal'));
-		permissionModal.show();
+		if (window.UI && window.UI.modals && window.UI.modals.permissionModal) {
+			window.UI.modals.permissionModal.show();
+		}
 
 		// Mostrar notificación de bienvenida
 		window.toast?.info('👋 Bienvenido a pod-cast! Activa el micrófono para comenzar.', 4000);

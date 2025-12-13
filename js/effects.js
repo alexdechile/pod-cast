@@ -1,5 +1,5 @@
 // Efecto: Robot (modulación por rectificación)
-editorRobotBtn?.addEventListener('click', () => {
+window.UI.effects.btnRobot?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);
@@ -11,7 +11,7 @@ editorRobotBtn?.addEventListener('click', () => {
 });
 
 // Efecto: Eco (delay simple)
-editorEchoBtn?.addEventListener('click', () => {
+window.UI.effects.btnEcho?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);
@@ -23,7 +23,7 @@ editorEchoBtn?.addEventListener('click', () => {
 });
 
 // Efecto: Pitch (sube una nota)
-editorPitchBtn?.addEventListener('click', () => {
+window.UI.effects.btnPitch?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) { console.log('Pitch: buffer vacío'); return; }
 	try {
@@ -40,21 +40,21 @@ editorPitchBtn?.addEventListener('click', () => {
 		const newBuf = ac.createBuffer(1, newLen, buf.sampleRate);
 		const src = buf.getChannelData(0);
 		const dst = newBuf.getChannelData(0);
-		console.log('Pitch: antes', src.slice(0,10));
+		console.log('Pitch: antes', src.slice(0, 10));
 		for (let i = 0; i < newLen; i++) {
 			dst[i] = src[Math.floor(i * factor)] || 0;
 		}
-		console.log('Pitch: después', dst.slice(0,10));
+		console.log('Pitch: después', dst.slice(0, 10));
 		applyEffectToSelection(newBuf);
-		showEffectFeedback(editorPitchBtn);
+		showEffectFeedback(window.UI.effects.btnPitch);
 	} catch (err) {
 		console.error('Error en efecto Pitch:', err);
-		showEffectFeedback(editorPitchBtn, 'Error en Pitch');
+		showEffectFeedback(window.UI.effects.btnPitch, 'Error en Pitch');
 	}
 });
 
 // Efecto: Normalizar
-editorNormalizeBtn?.addEventListener('click', () => {
+window.UI.effects.btnNormalize?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);
@@ -67,7 +67,7 @@ editorNormalizeBtn?.addEventListener('click', () => {
 });
 
 // Efecto: Pasa altos (filtro simple)
-editorHPFBtn?.addEventListener('click', () => {
+window.UI.effects.btnHPF?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);
@@ -81,7 +81,7 @@ editorHPFBtn?.addEventListener('click', () => {
 });
 
 // Efecto: Pasa bajos (filtro simple)
-editorLPFBtn?.addEventListener('click', () => {
+window.UI.effects.btnLPF?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);
@@ -94,7 +94,7 @@ editorLPFBtn?.addEventListener('click', () => {
 });
 
 // Efecto: Anti-pop (suaviza picos)
-editorAntipopBtn?.addEventListener('click', () => {
+window.UI.effects.btnAntipop?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);
@@ -107,7 +107,7 @@ editorAntipopBtn?.addEventListener('click', () => {
 });
 
 // Efecto: Compresión extra (simple soft clipping)
-editorCompressBtn?.addEventListener('click', () => {
+window.UI.effects.btnCompress?.addEventListener('click', () => {
 	const buf = getSelectedBuffer();
 	if (!buf) return;
 	const data = buf.getChannelData(0);

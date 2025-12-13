@@ -1,70 +1,70 @@
 // --- Lógica inicial del editor de sonido minimalista ---
-	function setupEditorElements() {
-		const editorRecordingSelect = document.getElementById('editor-recording-select');
-		const editorAudioPreview = document.getElementById('editor-audio-preview');
-		if (editorRecordingSelect && !editorRecordingSelect._listenerAdded) {
-			editorRecordingSelect.addEventListener('change', function() {
-				if (!window.dbAudio) return;
-				const id = Number(this.value);
-				if (!id) {
-					editorAudioPreview.src = '';
-					editorAudioPreview.style.display = 'none';
-					return;
-				}
-				const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-				const store = tx.objectStore('recordings');
-				const req = store.get(id);
-				req.onsuccess = function(e) {
-					const rec = e.target.result;
-					if (rec && rec.blob) {
-						editorAudioPreview.src = URL.createObjectURL(rec.blob);
-						editorAudioPreview.style.display = 'block';
-					}
-				};
-			});
-			editorRecordingSelect._listenerAdded = true;
-		}
-	}
-	function populateEditorRecordings() {
-		const editorRecordingSelect = document.getElementById('editor-recording-select');
-		const editorAudioPreview = document.getElementById('editor-audio-preview');
-		if (!window.dbAudio || !editorRecordingSelect) return;
-		const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-		const store = tx.objectStore('recordings');
-		const req = store.getAll();
-		req.onsuccess = function(e) {
-			const recs = e.target.result;
-			editorRecordingSelect.innerHTML = '';
-			if (recs.length === 0) {
-				const opt = document.createElement('option');
-				opt.value = '';
-				opt.textContent = 'No hay grabaciones';
-				editorRecordingSelect.appendChild(opt);
-				editorAudioPreview.src = '';
-				editorAudioPreview.style.display = 'none';
-				return;
-			}
-			recs.sort((a, b) => new Date(b.date) - new Date(a.date));
-			recs.forEach(rec => {
-				const opt = document.createElement('option');
-				opt.value = rec.id;
-				opt.textContent = rec.name;
-				editorRecordingSelect.appendChild(opt);
-			});
-			editorRecordingSelect.value = recs[0].id;
-			editorAudioPreview.src = URL.createObjectURL(recs[0].blob);
-			editorAudioPreview.style.display = 'block';
-		};
-	}
+function setupEditorElements() {
+  const editorRecordingSelect = window.UI.editor.recordingSelect;
+  const editorAudioPreview = window.UI.editor.audioPreview;
+  if (editorRecordingSelect && !editorRecordingSelect._listenerAdded) {
+    editorRecordingSelect.addEventListener('change', function () {
+      if (!window.dbAudio) return;
+      const id = Number(this.value);
+      if (!id) {
+        editorAudioPreview.src = '';
+        editorAudioPreview.style.display = 'none';
+        return;
+      }
+      const tx = window.dbAudio.transaction(['recordings'], 'readonly');
+      const store = tx.objectStore('recordings');
+      const req = store.get(id);
+      req.onsuccess = function (e) {
+        const rec = e.target.result;
+        if (rec && rec.blob) {
+          editorAudioPreview.src = URL.createObjectURL(rec.blob);
+          editorAudioPreview.style.display = 'block';
+        }
+      };
+    });
+    editorRecordingSelect._listenerAdded = true;
+  }
+}
+function populateEditorRecordings() {
+  const editorRecordingSelect = window.UI.editor.recordingSelect;
+  const editorAudioPreview = window.UI.editor.audioPreview;
+  if (!window.dbAudio || !editorRecordingSelect) return;
+  const tx = window.dbAudio.transaction(['recordings'], 'readonly');
+  const store = tx.objectStore('recordings');
+  const req = store.getAll();
+  req.onsuccess = function (e) {
+    const recs = e.target.result;
+    editorRecordingSelect.innerHTML = '';
+    if (recs.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No hay grabaciones';
+      editorRecordingSelect.appendChild(opt);
+      editorAudioPreview.src = '';
+      editorAudioPreview.style.display = 'none';
+      return;
+    }
+    recs.sort((a, b) => new Date(b.date) - new Date(a.date));
+    recs.forEach(rec => {
+      const opt = document.createElement('option');
+      opt.value = rec.id;
+      opt.textContent = rec.name;
+      editorRecordingSelect.appendChild(opt);
+    });
+    editorRecordingSelect.value = recs[0].id;
+    editorAudioPreview.src = URL.createObjectURL(recs[0].blob);
+    editorAudioPreview.style.display = 'block';
+  };
+}
 
-    // Cargar la onda al seleccionar grabación
-editorRecordingSelect?.addEventListener('change', function() {
+// Cargar la onda al seleccionar grabación
+window.UI.editor.recordingSelect?.addEventListener('change', function () {
   const id = Number(this.value);
   if (!id || !window.dbAudio) return;
   const tx = window.dbAudio.transaction(['recordings'], 'readonly');
   const store = tx.objectStore('recordings');
   const req = store.get(id);
-  req.onsuccess = async function(e) {
+  req.onsuccess = async function (e) {
     const rec = e.target.result;
     if (rec && rec.blob) {
       console.log('Seleccionada grabación id', id, 'blob:', rec.blob);
@@ -97,7 +97,7 @@ editorRecordingSelect?.addEventListener('change', function() {
               updateTrimSliders();
             });
             window.editorWaveSurfer.on('region-removed', () => {
-              window.editorSelection = {start: 0, end: 1};
+              window.editorSelection = { start: 0, end: 1 };
               updateTrimSliders();
             });
           } else {
@@ -116,7 +116,7 @@ editorRecordingSelect?.addEventListener('change', function() {
                 resize: true
               });
             }
-            window.editorSelection = {start: 0, end: 1};
+            window.editorSelection = { start: 0, end: 1 };
             updateTrimSliders();
           });
         }
@@ -147,11 +147,11 @@ window.updateTrimSliders = function updateTrimSliders() {
   const dur = window.editorWaveSurfer.getDuration();
   const region = window.editorWaveSurfer.regionsList && Object.values(window.editorWaveSurfer.regionsList)[0];
   if (region) {
-    window.editorTrimStart.value = Math.round((region.start / dur) * 100);
-    window.editorTrimEnd.value = Math.round((region.end / dur) * 100);
+    window.UI.editor.trimStart.value = Math.round((region.start / dur) * 100);
+    window.UI.editor.trimEnd.value = Math.round((region.end / dur) * 100);
   } else {
-    window.editorTrimStart.value = 0;
-    window.editorTrimEnd.value = 100;
+    window.UI.editor.trimStart.value = 0;
+    window.UI.editor.trimEnd.value = 100;
   }
 }
 
@@ -185,14 +185,14 @@ window.updateEditorBuffer = function updateEditorBuffer(buffer) {
   }
 }
 
-if (editorPitchSlider && editorPitchValue) {
-  editorPitchSlider.addEventListener('input', () => {
-    const val = parseInt(editorPitchSlider.value, 10);
-    editorPitchValue.textContent = (val > 0 ? '+' : (val < 0 ? '' : '')) + val;
+if (window.UI.editor.pitchSlider && window.UI.editor.pitchValue) {
+  window.UI.editor.pitchSlider.addEventListener('input', () => {
+    const val = parseInt(window.UI.editor.pitchSlider.value, 10);
+    window.UI.editor.pitchValue.textContent = (val > 0 ? '+' : (val < 0 ? '' : '')) + val;
   });
 }
-if (editorEchoSlider && editorEchoValue) {
-  editorEchoSlider.addEventListener('input', () => {
-    editorEchoValue.textContent = editorEchoSlider.value + 'ms';
+if (window.UI.editor.echoSlider && window.UI.editor.echoValue) {
+  window.UI.editor.echoSlider.addEventListener('input', () => {
+    window.UI.editor.echoValue.textContent = window.UI.editor.echoSlider.value + 'ms';
   });
 }

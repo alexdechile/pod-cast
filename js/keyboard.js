@@ -189,55 +189,53 @@ window.keyboard = new KeyboardShortcuts();
 
 // Registrar atajos principales
 window.addEventListener('DOMContentLoaded', () => {
-    const btnRecord = document.getElementById('btn-record');
-    const btnPause = document.getElementById('btn-pause');
-    const btnStop = document.getElementById('btn-stop');
-    const btnPermission = document.getElementById('btn-permission');
-    const btnCompress = document.getElementById('btn-compress');
+    const R = window.UI.recorder;
+    const E = window.UI.editor;
+    const T = window.UI.tones;
 
     // R - Grabar/Detener
     window.keyboard.register('r', () => {
-        if (btnRecord && !btnRecord.disabled) {
-            btnRecord.click();
+        if (R.btnRecord && !R.btnRecord.disabled) {
+            R.btnRecord.click();
             window.toast?.info('Atajo: R - Grabar');
-        } else if (btnStop && !btnStop.disabled) {
-            btnStop.click();
+        } else if (R.btnStop && !R.btnStop.disabled) {
+            R.btnStop.click();
         }
     }, 'Iniciar/Detener grabación');
 
     // P - Pausar/Reanudar
     window.keyboard.register('p', () => {
-        if (btnPause && !btnPause.disabled) {
-            btnPause.click();
+        if (R.btnPause && !R.btnPause.disabled) {
+            R.btnPause.click();
         }
     }, 'Pausar/Reanudar grabación');
 
     // S - Stop
     window.keyboard.register('s', () => {
-        if (btnStop && !btnStop.disabled) {
-            btnStop.click();
+        if (R.btnStop && !R.btnStop.disabled) {
+            R.btnStop.click();
         }
     }, 'Detener grabación');
 
     // M - Micrófono
     window.keyboard.register('m', () => {
-        if (btnPermission) {
-            btnPermission.click();
+        if (R.btnPermission) {
+            R.btnPermission.click();
             window.toast?.info('Atajo: M - Micrófono');
         }
     }, 'Activar micrófono');
 
     // C - Compresión
     window.keyboard.register('c', () => {
-        if (btnCompress) {
-            btnCompress.click();
+        if (R.btnCompress) {
+            R.btnCompress.click();
             window.toast?.info('Atajo: C - Compresión');
         }
     }, 'Toggle compresión');
 
     // Espacio - Play/Pause del audio seleccionado
     window.keyboard.register(' ', () => {
-        const audioPreview = document.getElementById('editor-audio-preview');
+        const audioPreview = E.audioPreview;
         if (audioPreview && audioPreview.src) {
             if (audioPreview.paused) {
                 audioPreview.play();
@@ -251,7 +249,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Ctrl+S - Exportar
     window.keyboard.register('ctrl+s', () => {
-        const btnExport = document.getElementById('editor-export');
+        const btnExport = E.btnExport;
         if (btnExport) {
             btnExport.click();
             window.toast?.info('Atajo: Ctrl+S - Exportar');

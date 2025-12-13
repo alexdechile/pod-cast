@@ -212,16 +212,17 @@ function loadPlaylist() {
 }
 
 // --- Modal de permiso ---
-btnPermission?.addEventListener('click', () => {
-	permissionModal.show();
+window.UI.recorder.btnPermission?.addEventListener('click', () => {
+	window.UI.modals.permissionModal.show();
 });
-btnAllowMic?.addEventListener('click', async (e) => {
+window.UI.recorder.btnAllowMic?.addEventListener('click', async (e) => {
 	// Prevenir múltiples clics
-	if (btnAllowMic.disabled) return;
-	btnAllowMic.disabled = true;
-	btnAllowMic.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Solicitando permiso...';
+	if (window.UI.recorder.btnAllowMic.disabled) return;
+	window.UI.recorder.btnAllowMic.disabled = true;
+	window.UI.recorder.btnAllowMic.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Solicitando permiso...';
 
 	try {
+		// ... (rest of logic unchanged, just variable names) ...
 		console.log('Solicitando permiso de micrófono...');
 
 		// IMPORTANTE: Esta línea pide permiso al navegador
@@ -230,6 +231,7 @@ btnAllowMic?.addEventListener('click', async (e) => {
 		console.log('Permiso concedido, configurando audio...');
 
 		if (useCompressor) {
+			// ...
 			const ctx = new (window.AudioContext || window.webkitAudioContext)();
 			const source = ctx.createMediaStreamSource(stream);
 			const compressor = ctx.createDynamicsCompressor();
@@ -250,18 +252,13 @@ btnAllowMic?.addEventListener('click', async (e) => {
 		await loadWaveSurfer();
 
 		// Cerrar el modal
-		const modalElement = document.getElementById('permissionModal');
-		const modal = bootstrap.Modal.getInstance(modalElement);
-		if (modal) {
-			modal.hide();
-		}
+		window.UI.modals.permissionModal.hide();
 
 		window.toast?.success('✅ Micrófono activado correctamente');
 
 		// Agregar el timer al DOM
-		const timerContainer = document.getElementById('timer-container');
-		if (timerContainer && window.recordingTimer) {
-			timerContainer.appendChild(window.recordingTimer.element);
+		if (window.UI.recorder.timerContainer && window.recordingTimer) {
+			window.UI.recorder.timerContainer.appendChild(window.recordingTimer.element);
 		}
 
 		console.log('Micrófono configurado exitosamente');
@@ -270,8 +267,8 @@ btnAllowMic?.addEventListener('click', async (e) => {
 		console.error('Error al acceder al micrófono:', e);
 
 		// Restaurar botón
-		btnAllowMic.disabled = false;
-		btnAllowMic.innerHTML = '<i class="fa-solid fa-microphone"></i> Activar Micrófono';
+		window.UI.recorder.btnAllowMic.disabled = false;
+		window.UI.recorder.btnAllowMic.innerHTML = '<i class="fa-solid fa-microphone"></i> Activar Micrófono';
 
 		// Mensaje de error específico
 		let errorMsg = '❌ No se pudo acceder al micrófono.';
@@ -298,14 +295,14 @@ btnAllowMic?.addEventListener('click', async (e) => {
 });
 
 function enableRecorderControls() {
-	recorderControls.style.opacity = 1;
-	recorderControls.style.pointerEvents = 'auto';
-	btnPermission.classList.remove('btn-secondary');
-	btnPermission.classList.add('btn-success');
-	btnPermission.innerHTML = '<i class="fa-solid fa-microphone"></i>';
-	btnPermission.title = 'Grabador activo';
-	btnPermission.style.background = 'linear-gradient(90deg,#1e5799,#2989d8,#207cca,#7db9e8)';
-	btnPermission.style.color = '#fff';
+	window.UI.recorder.recorderControls.style.opacity = 1;
+	window.UI.recorder.recorderControls.style.pointerEvents = 'auto';
+	window.UI.recorder.btnPermission.classList.remove('btn-secondary');
+	window.UI.recorder.btnPermission.classList.add('btn-success');
+	window.UI.recorder.btnPermission.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+	window.UI.recorder.btnPermission.title = 'Grabador activo';
+	window.UI.recorder.btnPermission.style.background = 'linear-gradient(90deg,#1e5799,#2989d8,#207cca,#7db9e8)';
+	window.UI.recorder.btnPermission.style.color = '#fff';
 }
 
 // --- Carga dinámica de WaveSurfer ---
@@ -317,7 +314,7 @@ async function loadWaveSurfer() {
 	await new Promise(res => { script.onload = res; });
 	if (!wavesurfer) {
 		wavesurfer = WaveSurfer.create({
-			container: waveformDiv,
+			container: window.UI.recorder.waveformDiv,
 			waveColor: '#00c3ff',
 			progressColor: '#fffc00',
 			backgroundColor: '#18191a',
@@ -347,14 +344,14 @@ function drawLiveWaveform() {
 	if (!canvas) {
 		canvas = document.createElement('canvas');
 		canvas.id = canvasId;
-		canvas.width = waveformDiv.offsetWidth;
-		canvas.height = waveformDiv.offsetHeight;
+		canvas.width = window.UI.recorder.waveformDiv.offsetWidth;
+		canvas.height = window.UI.recorder.waveformDiv.offsetHeight;
 		canvas.style.position = 'absolute';
 		canvas.style.left = 0;
 		canvas.style.top = 0;
 		canvas.style.zIndex = 2;
-		waveformDiv.innerHTML = '';
-		waveformDiv.appendChild(canvas);
+		window.UI.recorder.waveformDiv.innerHTML = '';
+		window.UI.recorder.waveformDiv.appendChild(canvas);
 	}
 	const ctx = canvas.getContext('2d');
 	function animate() {
@@ -385,12 +382,12 @@ function stopLiveWaveform() {
 		audioContext.close();
 		audioContext = null;
 	}
-	waveformDiv.innerHTML = '';
+	window.UI.recorder.waveformDiv.innerHTML = '';
 }
 
 // --- Grabación de audio ---
 // --- Botón Grabar ---
-btnRecord?.addEventListener('click', async () => {
+window.UI.recorder.btnRecord?.addEventListener('click', async () => {
 	if (!audioStream) return;
 	if (!mediaRecorder) {
 		mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
@@ -400,11 +397,11 @@ btnRecord?.addEventListener('click', async () => {
 			saveRecording(blob);
 			audioChunks = [];
 			stopLiveWaveform();
-			if (window.WaveSurfer && waveformDiv) {
-				waveformDiv.innerHTML = '';
+			if (window.WaveSurfer && window.UI.recorder.waveformDiv) {
+				window.UI.recorder.waveformDiv.innerHTML = '';
 				if (!wavesurfer) {
 					wavesurfer = WaveSurfer.create({
-						container: waveformDiv,
+						container: window.UI.recorder.waveformDiv,
 						waveColor: '#00c3ff',
 						progressColor: '#fffc00',
 						backgroundColor: '#18191a',
@@ -420,31 +417,31 @@ btnRecord?.addEventListener('click', async () => {
 		};
 		mediaRecorder.onpause = () => {
 			isPaused = true;
-			btnPause.innerHTML = '<i class="fa-solid fa-play"></i>';
-			btnPause.title = 'Reanudar';
+			window.UI.recorder.btnPause.innerHTML = '<i class="fa-solid fa-play"></i>';
+			window.UI.recorder.btnPause.title = 'Reanudar';
 		};
 		mediaRecorder.onresume = () => {
 			isPaused = false;
-			btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
-			btnPause.title = 'Pausar';
+			window.UI.recorder.btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
+			window.UI.recorder.btnPause.title = 'Pausar';
 		};
 	}
 	if (!isRecording) {
 		mediaRecorder.start();
 		isRecording = true;
 		isPaused = false;
-		btnRecord.disabled = true;
-		btnPause.disabled = false;
-		btnStop.disabled = false;
-		btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
-		btnPause.title = 'Pausar';
+		window.UI.recorder.btnRecord.disabled = true;
+		window.UI.recorder.btnPause.disabled = false;
+		window.UI.recorder.btnStop.disabled = false;
+		window.UI.recorder.btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
+		window.UI.recorder.btnPause.title = 'Pausar';
 		startLiveWaveform();
-		btnRecord.classList.remove('btn-dark');
-		btnRecord.classList.add('btn-danger');
-		btnRecord.innerHTML = '<i class="fa-solid fa-circle"></i>';
-		btnRecord.title = 'Grabando...';
-		btnRecord.style.background = 'linear-gradient(90deg,#fffc00,#ff0066)';
-		btnRecord.style.color = '#232526';
+		window.UI.recorder.btnRecord.classList.remove('btn-dark');
+		window.UI.recorder.btnRecord.classList.add('btn-danger');
+		window.UI.recorder.btnRecord.innerHTML = '<i class="fa-solid fa-circle"></i>';
+		window.UI.recorder.btnRecord.title = 'Grabando...';
+		window.UI.recorder.btnRecord.style.background = 'linear-gradient(90deg,#fffc00,#ff0066)';
+		window.UI.recorder.btnRecord.style.color = '#232526';
 		// Iniciar timer y VU Meter
 		window.recordingTimer?.start();
 		if (window.vuMeter && audioStream) {
@@ -455,7 +452,7 @@ btnRecord?.addEventListener('click', async () => {
 });
 
 // --- Botón Pausa/Reanudar ---
-btnPause?.addEventListener('click', () => {
+window.UI.recorder.btnPause?.addEventListener('click', () => {
 	if (!mediaRecorder || !isRecording) return;
 	if (!isPaused) {
 		mediaRecorder.pause();
@@ -469,22 +466,22 @@ btnPause?.addEventListener('click', () => {
 });
 
 // --- Botón Stop ---
-btnStop?.addEventListener('click', () => {
+window.UI.recorder.btnStop?.addEventListener('click', () => {
 	if (!mediaRecorder || !isRecording) return;
 	mediaRecorder.stop();
 	isRecording = false;
 	isPaused = false;
-	btnRecord.disabled = false;
-	btnPause.disabled = true;
-	btnStop.disabled = true;
-	btnRecord.classList.remove('btn-danger');
-	btnRecord.classList.add('btn-dark');
-	btnRecord.innerHTML = '<i class="fa-solid fa-circle"></i>';
-	btnRecord.title = 'Grabar';
-	btnRecord.style.background = '';
-	btnRecord.style.color = '';
-	btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
-	btnPause.title = 'Pausar';
+	window.UI.recorder.btnRecord.disabled = false;
+	window.UI.recorder.btnPause.disabled = true;
+	window.UI.recorder.btnStop.disabled = true;
+	window.UI.recorder.btnRecord.classList.remove('btn-danger');
+	window.UI.recorder.btnRecord.classList.add('btn-dark');
+	window.UI.recorder.btnRecord.innerHTML = '<i class="fa-solid fa-circle"></i>';
+	window.UI.recorder.btnRecord.title = 'Grabar';
+	window.UI.recorder.btnRecord.style.background = '';
+	window.UI.recorder.btnRecord.style.color = '';
+	window.UI.recorder.btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
+	window.UI.recorder.btnPause.title = 'Pausar';
 	// Detener timer y VU Meter
 	window.recordingTimer?.stop();
 	if (window.vuMeter) {
@@ -494,37 +491,41 @@ btnStop?.addEventListener('click', () => {
 });
 
 // --- Control de volumen de grabación ---
-inputVolume?.addEventListener('input', () => {
+window.UI.recorder.inputVolume?.addEventListener('input', () => {
+	const volInput = window.UI.recorder.inputVolume;
 	if (audioStream) {
 		const audioTracks = audioStream.getAudioTracks();
 		if (audioTracks.length > 0 && audioTracks[0].applyConstraints) {
-			audioTracks[0].applyConstraints({ volume: parseFloat(inputVolume.value) });
+			audioTracks[0].applyConstraints({ volume: parseFloat(volInput.value) });
 		}
 	}
-	inputVolume.style.background = `linear-gradient(90deg,#00c3ff ${(inputVolume.value * 100)}%,#232526 ${(inputVolume.value * 100)}%)`;
+	volInput.style.background = `linear-gradient(90deg,#00c3ff ${(volInput.value * 100)}%,#232526 ${(volInput.value * 100)}%)`;
 });
 
 // --- Compresión/Mejora de audio real ---
-btnCompress?.addEventListener('click', () => {
+window.UI.recorder.btnCompress?.addEventListener('click', () => {
+	const btn = window.UI.recorder.btnCompress;
 	useCompressor = !useCompressor;
-	btnCompress.classList.toggle('btn-warning', useCompressor);
-	btnCompress.classList.toggle('btn-dark', !useCompressor);
-	btnCompress.title = useCompressor ? 'Compresión activada' : 'Mejorar audio';
-	btnCompress.innerHTML = useCompressor
+	btn.classList.toggle('btn-warning', useCompressor);
+	btn.classList.toggle('btn-dark', !useCompressor);
+	btn.title = useCompressor ? 'Compresión activada' : 'Mejorar audio';
+	btn.innerHTML = useCompressor
 		? '<i class="fa-solid fa-wand-magic-sparkles"></i> ON'
 		: '<i class="fa-solid fa-wand-magic-sparkles"></i>';
 });
 
+// --- Tonos y Efectos (UI Elements ya definidos en ui.js) ---
+
 // --- Simulación de sonido Pac-Man ---
-const btnPacman = document.getElementById('btn-pacman');
-if (btnPacman) {
-	btnPacman.addEventListener('click', () => {
+if (window.UI.tones.btnPacman) {
+	window.UI.tones.btnPacman.addEventListener('click', () => {
 		const ctx = new (window.AudioContext || window.webkitAudioContext)();
+		// ... (rest unchanged) ...
 		const osc = ctx.createOscillator();
 		const gain = ctx.createGain();
 		osc.type = 'square';
-		osc.frequency.setValueAtTime(880, ctx.currentTime); // nota aguda
-		osc.frequency.linearRampToValueAtTime(440, ctx.currentTime + 0.18); // baja rápido
+		osc.frequency.setValueAtTime(880, ctx.currentTime);
+		osc.frequency.linearRampToValueAtTime(440, ctx.currentTime + 0.18);
 		gain.gain.setValueAtTime(0.22, ctx.currentTime);
 		gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.19);
 		osc.connect(gain).connect(ctx.destination);
@@ -533,25 +534,22 @@ if (btnPacman) {
 		setTimeout(() => ctx.close(), 300);
 	});
 }
+
 // --- Simulación de tecla de grabadora de cassette ---
-const btnTeclaCassette = document.getElementById('btn-tecla-cassette');
-if (btnTeclaCassette) {
-	btnTeclaCassette.addEventListener('click', () => {
+if (window.UI.tones.btnTeclaCassette) {
+	window.UI.tones.btnTeclaCassette.addEventListener('click', () => {
 		const ctx = new (window.AudioContext || window.webkitAudioContext)();
 		const bufferSize = 2048;
 		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
 		const data = buffer.getChannelData(0);
-		// Generar ruido blanco
 		for (let i = 0; i < bufferSize; i++) {
 			data[i] = (Math.random() * 2 - 1) * 0.7;
 		}
 		const noise = ctx.createBufferSource();
 		noise.buffer = buffer;
-		// Filtro para simular el click mecánico
 		const filter = ctx.createBiquadFilter();
 		filter.type = 'highpass';
 		filter.frequency.value = 1200;
-		// Envolvente rápida
 		const gain = ctx.createGain();
 		gain.gain.setValueAtTime(0, ctx.currentTime);
 		gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.01);
@@ -562,12 +560,12 @@ if (btnTeclaCassette) {
 		setTimeout(() => ctx.close(), 180);
 	});
 }
+
 // --- Generador de tonos: Cortina cierre ---
-const btnCortinaCierre = document.getElementById('btn-cortina-cierre');
-if (btnCortinaCierre) {
-	btnCortinaCierre.addEventListener('click', () => {
-		// Notas invertidas: A4, G4, E4, C4, E4, G4, A4
+if (window.UI.tones.btnCortinaCierre) {
+	window.UI.tones.btnCortinaCierre.addEventListener('click', () => {
 		const notes = [440.00, 392.00, 329.63, 261.63, 329.63, 392.00, 440.00];
+		// ... (rest unchanged) ...
 		const longDur = 0.64;
 		const shortDur = 0.32;
 		const durations = [longDur, longDur, longDur, shortDur, shortDur, shortDur, shortDur];
@@ -575,7 +573,6 @@ if (btnCortinaCierre) {
 		let now = ctx.currentTime;
 		let t = now;
 		notes.forEach((freq, i) => {
-			// Voz principal
 			const osc1 = ctx.createOscillator();
 			const gain1 = ctx.createGain();
 			osc1.type = 'triangle';
@@ -584,7 +581,6 @@ if (btnCortinaCierre) {
 			osc1.connect(gain1).connect(ctx.destination);
 			osc1.start(t);
 			osc1.stop(t + durations[i] - 0.04);
-			// Segunda voz una octava abajo
 			const osc2 = ctx.createOscillator();
 			const gain2 = ctx.createGain();
 			osc2.type = 'triangle';
@@ -598,20 +594,18 @@ if (btnCortinaCierre) {
 		setTimeout(() => ctx.close(), durations.reduce((a, b) => a + b, 0) * 1000 + 200);
 	});
 }
+
 // --- Generador de tonos: Cortina ---
-const btnCortina = document.getElementById('btn-cortina');
-if (btnCortina) {
-	btnCortina.addEventListener('click', () => {
-		// Notas: C4, E4, G4, A4, G4, E4, C4
+if (window.UI.tones.btnCortina) {
+	window.UI.tones.btnCortina.addEventListener('click', () => {
 		const notes = [261.63, 329.63, 392.00, 440.00, 392.00, 329.63, 261.63];
-		const longDur = 0.64; // segundos (doble)
-		const shortDur = 0.32; // segundos
+		const longDur = 0.64;
+		const shortDur = 0.32;
 		const durations = [longDur, longDur, longDur, shortDur, shortDur, shortDur, shortDur];
 		const ctx = new (window.AudioContext || window.webkitAudioContext)();
 		let now = ctx.currentTime;
 		let t = now;
 		notes.forEach((freq, i) => {
-			// Voz principal
 			const osc1 = ctx.createOscillator();
 			const gain1 = ctx.createGain();
 			osc1.type = 'triangle';
@@ -620,7 +614,6 @@ if (btnCortina) {
 			osc1.connect(gain1).connect(ctx.destination);
 			osc1.start(t);
 			osc1.stop(t + durations[i] - 0.04);
-			// Segunda voz una octava abajo
 			const osc2 = ctx.createOscillator();
 			const gain2 = ctx.createGain();
 			osc2.type = 'triangle';
