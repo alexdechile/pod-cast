@@ -22,42 +22,51 @@ function initAudioDB() {
 	};
 }
 
-async function saveRecording(blob, name) {
-	if (!window.dbAudio) {
-		window.toast?.error('Error: Base de datos no disponible');
-		return;
-	}
-	try {
-		// Obtener duración del audio
-		const duration = await getAudioDuration(blob);
+function saveRecording(blob, name) {
+	return new Promise(async (resolve, reject) => {
+		if (!window.dbAudio) {
+			window.toast?.error('Error: Base de datos no disponible');
+			reject(new Error('DB not available'));
+			return;
+		}
+		try {
+			// Obtener duración del audio con timeout de 3 segundos
+			const durationPromise = getAudioDuration(blob);
+			const timeoutPromise = new Promise(r => setTimeout(() => r(0), 3000));
+			// Si falla o tarda mucho, usa 0 (se corregirá al reproducir)
+			const duration = await Promise.race([durationPromise, timeoutPromise]);
 
-		const tx = window.dbAudio.transaction(['recordings'], 'readwrite');
-		const store = tx.objectStore('recordings');
-		const now = new Date();
-		const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
+			const tx = window.dbAudio.transaction(['recordings'], 'readwrite');
+			const store = tx.objectStore('recordings');
+			const now = new Date();
+			const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
 
-		// Guardar con metadata
-		store.add({
-			name: defaultName,
-			date: now,
-			blob,
-			duration: duration,
-			size: blob.size,
-			format: blob.type
-		});
+			// Guardar con metadata
+			const req = store.add({
+				name: defaultName,
+				date: now,
+				blob,
+				duration: duration,
+				size: blob.size,
+				format: blob.type
+			});
 
-		tx.oncomplete = () => {
-			loadPlaylist();
-			const sizeStr = window.playlistManager?.formatSize(blob.size) || '';
-			const durStr = window.playlistManager?.formatDuration(duration) || '';
-			window.toast?.success(`Grabación guardada: ${durStr} • ${sizeStr}`);
-		};
-		tx.onerror = () => {
-			window.toast?.error('Error al guardar la grabación');
-		};
-	} catch (e) {
-		window.toast?.error('Error al guardar: ' + e.message);
-	}
+			tx.oncomplete = () => {
+				loadPlaylist();
+				const sizeStr = window.playlistManager?.formatSize(blob.size) || '';
+				const durStr = window.playlistManager?.formatDuration(duration) || '';
+				window.toast?.success(`Grabación guardada: ${durStr} • ${sizeStr}`);
+				resolve();
+			};
+			tx.onerror = (e) => {
+				window.toast?.error('Error al guardar la grabación');
+				reject(e.target.error);
+			};
+		} catch (e) {
+			window.toast?.error('Error al guardar: ' + e.message);
+			reject(e);
+		}
+	});
 }
 
 // Función auxiliar para obtener duración del audio
@@ -392,11 +401,43 @@ window.UI.recorder.btnRecord?.addEventListener('click', async () => {
 	if (!mediaRecorder) {
 		mediaRecorder = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
 		mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-		mediaRecorder.onstop = () => {
+		mediaRecorder.onstop = async () => {
+			// UI Feedback: Guardando
+			window.UI.recorder.btnRecord.disabled = true;
+			window.UI.recorder.btnRecord.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+			window.UI.recorder.btnRecord.title = 'Guardando...';
+
 			const blob = new Blob(audioChunks, { type: 'audio/webm' });
-			saveRecording(blob);
+			try {
+				await saveRecording(blob);
+			} catch (err) {
+				console.error("Save failed", err);
+			}
+
 			audioChunks = [];
 			stopLiveWaveform();
+
+			// Restore UI
+			window.UI.recorder.btnRecord.disabled = false;
+			window.UI.recorder.btnPause.disabled = true;
+			window.UI.recorder.btnStop.disabled = true;
+
+			window.UI.recorder.btnRecord.classList.remove('btn-danger');
+			window.UI.recorder.btnRecord.classList.add('btn-dark');
+			window.UI.recorder.btnRecord.innerHTML = '<i class="fa-solid fa-circle"></i>';
+			window.UI.recorder.btnRecord.title = 'Grabar';
+			window.UI.recorder.btnRecord.style.background = '';
+			window.UI.recorder.btnRecord.style.color = '';
+			window.UI.recorder.btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
+			window.UI.recorder.btnPause.title = 'Pausar';
+
+			// Detener timer y VU Meter
+			window.recordingTimer?.stop();
+			if (window.vuMeter) {
+				window.vuMeter.stop();
+			}
+			window.toast?.success('✅ Grabación finalizada y guardada');
+
 			if (window.WaveSurfer && window.UI.recorder.waveformDiv) {
 				window.UI.recorder.waveformDiv.innerHTML = '';
 				if (!wavesurfer) {
@@ -471,23 +512,7 @@ window.UI.recorder.btnStop?.addEventListener('click', () => {
 	mediaRecorder.stop();
 	isRecording = false;
 	isPaused = false;
-	window.UI.recorder.btnRecord.disabled = false;
-	window.UI.recorder.btnPause.disabled = true;
-	window.UI.recorder.btnStop.disabled = true;
-	window.UI.recorder.btnRecord.classList.remove('btn-danger');
-	window.UI.recorder.btnRecord.classList.add('btn-dark');
-	window.UI.recorder.btnRecord.innerHTML = '<i class="fa-solid fa-circle"></i>';
-	window.UI.recorder.btnRecord.title = 'Grabar';
-	window.UI.recorder.btnRecord.style.background = '';
-	window.UI.recorder.btnRecord.style.color = '';
-	window.UI.recorder.btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
-	window.UI.recorder.btnPause.title = 'Pausar';
-	// Detener timer y VU Meter
-	window.recordingTimer?.stop();
-	if (window.vuMeter) {
-		window.vuMeter.stop();
-	}
-	window.toast?.success('✅ Grabación finalizada');
+	// UI Update happens in onstop event after saving
 });
 
 // --- Control de volumen de grabación ---
