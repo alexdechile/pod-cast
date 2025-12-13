@@ -111,32 +111,61 @@ function populateEditorRecordings() {
  */
 async function importRecordingToProject(recordingRecord) {
   if (!window.audioEngine || !window.editorProject) {
+    window.toast?.error("Error: Motor de audio no inicializado");
     console.error("Audio Engine or Project not initialized");
     return;
   }
 
-  console.log("Importing:", recordingRecord.name);
+  const toastId = window.toast?.info("Cargando grabación...", 0); // persistent toast
 
-  // Decode audio data
-  const arrayBuffer = await recordingRecord.blob.arrayBuffer();
-  const audioBuffer = await window.audioEngine.decodeAudioData(arrayBuffer);
+  try {
+    console.log("Importing:", recordingRecord.name);
 
-  // Create Clip
-  const clipId = `clip_${Date.now()}`;
-  // Store buffer in project cache
-  window.editorProject.buffers.set(clipId, audioBuffer);
+    if (window.audioEngine.ac.state === 'suspended') {
+      await window.audioEngine.ac.resume();
+    }
 
-  const newClip = new window.EditorCore.Clip(clipId, clipId, audioBuffer.duration);
-  newClip.name = recordingRecord.name; // extra prop
+    // Decode audio data
+    const arrayBuffer = await recordingRecord.blob.arrayBuffer();
+    // Safety check for empty buffer
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error("El archivo de audio está vacío.");
+    }
 
-  // RESET Project for this basic version
-  window.editorProject.clips = [];
-  window.editorProject.playhead = 0;
+    const audioBuffer = await window.audioEngine.decodeAudioData(arrayBuffer);
 
-  window.editorProject.addClip(newClip);
+    console.log("Audio Decoded. Duration:", audioBuffer.duration, "Channels:", audioBuffer.numberOfChannels);
 
-  console.log("Clip added, rendering timeline...");
-  renderTimeline();
+    // Create Clip
+    const clipId = `clip_${Date.now()}`;
+    // Store buffer in project cache
+    window.editorProject.buffers.set(clipId, audioBuffer);
+
+    const newClip = new window.EditorCore.Clip(clipId, clipId, audioBuffer.duration);
+    newClip.name = recordingRecord.name;
+
+    // RESET Project for this basic version
+    window.editorProject.clips = [];
+    window.editorProject.playhead = 0;
+
+    window.editorProject.addClip(newClip);
+
+    console.log("Clip added to project. Rendering timeline...");
+    renderTimeline();
+
+    // Explicitly update playhead pos (0)
+    const ph = document.getElementById('editor-playhead');
+    if (ph) ph.style.left = '0px';
+
+    if (window.toast && toastId) {
+      // Remove loading toast (if your toast lib supports remove, otherwise just show success)
+      window.toast.success("Grabación cargada en el editor");
+    }
+
+  } catch (e) {
+    console.error("Import failed:", e);
+    window.toast?.error("Error al cargar audio: " + e.message);
+  }
 }
 
 /**
