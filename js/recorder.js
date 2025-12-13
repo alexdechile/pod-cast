@@ -106,6 +106,12 @@ function loadPlaylist() {
 			window.playlistManager.setRecordings(recs);
 		}
 
+		const playlistUl = window.UI.recorder.playlistUl;
+		if (!playlistUl) {
+			console.warn('⚠️ playlistUl no encontrado en DOM');
+			return;
+		}
+
 		playlistUl.innerHTML = '';
 		recs.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -204,11 +210,11 @@ function loadPlaylist() {
 			// Visualizar onda al hacer click en audio
 			const audioElem = li.querySelector('audio');
 			audioElem.addEventListener('play', function () {
-				if (window.WaveSurfer && waveformDiv) {
-					waveformDiv.innerHTML = '';
+				if (window.WaveSurfer && window.UI.recorder.waveformDiv) {
+					window.UI.recorder.waveformDiv.innerHTML = '';
 					if (!wavesurfer) {
 						wavesurfer = WaveSurfer.create({
-							container: waveformDiv,
+							container: window.UI.recorder.waveformDiv,
 							waveColor: '#00c3ff',
 							progressColor: '#fffc00',
 							backgroundColor: '#18191a',
