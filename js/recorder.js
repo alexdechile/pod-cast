@@ -236,14 +236,22 @@ btnAllowMic?.addEventListener('click', async () => {
 		}
 		enableRecorderControls();
 		await loadWaveSurfer();
-		window.toast?.success('Micrófono activado correctamente');
+
+		// Cerrar el modal
+		const modalElement = document.getElementById('permissionModal');
+		const modal = bootstrap.Modal.getInstance(modalElement);
+		if (modal) {
+			modal.hide();
+		}
+
+		window.toast?.success('✅ Micrófono activado correctamente');
 		// Agregar el timer al DOM
 		const timerContainer = document.getElementById('timer-container');
 		if (timerContainer && window.recordingTimer) {
 			timerContainer.appendChild(window.recordingTimer.element);
 		}
 	} catch (e) {
-		window.toast?.error('No se pudo acceder al micrófono. Verifica los permisos.');
+		window.toast?.error('❌ No se pudo acceder al micrófono. Verifica los permisos.');
 		console.error('Error al acceder al micrófono:', e);
 	}
 });
