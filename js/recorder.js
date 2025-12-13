@@ -22,20 +22,35 @@ function initAudioDB() {
 	};
 }
 
-function saveRecording(blob, name) {
+async function saveRecording(blob, name) {
 	if (!window.dbAudio) {
 		window.toast?.error('Error: Base de datos no disponible');
 		return;
 	}
 	try {
+		// Obtener duración del audio
+		const duration = await getAudioDuration(blob);
+
 		const tx = window.dbAudio.transaction(['recordings'], 'readwrite');
 		const store = tx.objectStore('recordings');
 		const now = new Date();
 		const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
-		store.add({ name: defaultName, date: now, blob });
+
+		// Guardar con metadata
+		store.add({
+			name: defaultName,
+			date: now,
+			blob,
+			duration: duration,
+			size: blob.size,
+			format: blob.type
+		});
+
 		tx.oncomplete = () => {
 			loadPlaylist();
-			window.toast?.success('Grabación guardada exitosamente');
+			const sizeStr = window.playlistManager?.formatSize(blob.size) || '';
+			const durStr = window.playlistManager?.formatDuration(duration) || '';
+			window.toast?.success(`Grabación guardada: ${durStr} • ${sizeStr}`);
 		};
 		tx.onerror = () => {
 			window.toast?.error('Error al guardar la grabación');
@@ -45,6 +60,20 @@ function saveRecording(blob, name) {
 	}
 }
 
+// Función auxiliar para obtener duración del audio
+function getAudioDuration(blob) {
+	return new Promise((resolve) => {
+		const audio = new Audio();
+		audio.addEventListener('loadedmetadata', () => {
+			resolve(audio.duration);
+		});
+		audio.addEventListener('error', () => {
+			resolve(0);
+		});
+		audio.src = URL.createObjectURL(blob);
+	});
+}
+
 function loadPlaylist() {
 	if (!window.dbAudio) return;
 	const tx = window.dbAudio.transaction(['recordings'], 'readonly');
@@ -52,17 +81,72 @@ function loadPlaylist() {
 	const req = store.getAll();
 	req.onsuccess = function (e) {
 		const recs = e.target.result;
+
+		// Actualizar playlist manager
+		if (window.playlistManager) {
+			window.playlistManager.setRecordings(recs);
+		}
+
 		playlistUl.innerHTML = '';
 		recs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
 		recs.forEach(rec => {
 			const li = document.createElement('li');
-			li.className = 'list-group-item d-flex align-items-center justify-content-between';
-			li.style.background = 'transparent';
+			li.className = 'list-group-item';
+			li.style.cssText = `
+				background: transparent;
+				padding: 12px;
+				border: 1px solid rgba(255, 255, 255, 0.05);
+				border-radius: 8px;
+				margin-bottom: 8px;
+			`;
+
+			const durationStr = window.playlistManager?.formatDuration(rec.duration) || '00:00';
+			const sizeStr = window.playlistManager?.formatSize(rec.size) || '0 KB';
+			const dateStr = new Date(rec.date).toLocaleString('es-CL', {
+				day: '2-digit',
+				month: 'short',
+				year: 'numeric',
+				hour: '2-digit',
+				minute: '2-digit'
+			});
+
 			li.innerHTML = `
-					<audio controls src="${URL.createObjectURL(rec.blob)}" style="width: 60%;"></audio>
-					<input type="text" value="${rec.name}" class="form-control form-control-sm w-25 me-2 rename-input" style="background:#232526; color:#e0e0e0; border:none;">
-					<button class="btn btn-outline-danger btn-sm delete-recording"><i class="fa fa-trash"></i></button>
-				`;
+				<div style="display: flex; flex-direction: column; gap: 8px;">
+					<div style="display: flex; align-items: center; gap: 8px;">
+						<input type="text" value="${rec.name}" class="form-control form-control-sm rename-input" style="
+							background: rgba(255, 255, 255, 0.05);
+							color: #e0e0e0;
+							border: 1px solid rgba(255, 255, 255, 0.1);
+							border-radius: 6px;
+							padding: 6px 10px;
+							flex: 1;
+							font-family: 'Montserrat', sans-serif;
+							font-size: 13px;
+						">
+						<button class="btn btn-outline-danger btn-sm delete-recording" style="padding: 6px 12px;">
+							<i class="fa fa-trash"></i>
+						</button>
+					</div>
+					<audio controls src="${URL.createObjectURL(rec.blob)}" style="
+						width: 100%;
+						height: 32px;
+						border-radius: 6px;
+					"></audio>
+					<div style="
+						display: flex;
+						gap: 12px;
+						font-size: 11px;
+						color: #b0b3b8;
+						font-family: 'Montserrat', sans-serif;
+						flex-wrap: wrap;
+					">
+						<span><i class="fa-solid fa-clock" style="color: #00c3ff;"></i> ${durationStr}</span>
+						<span><i class="fa-solid fa-database" style="color: #fffc00;"></i> ${sizeStr}</span>
+						<span><i class="fa-solid fa-calendar" style="color: #ff9900;"></i> ${dateStr}</span>
+					</div>
+				</div>
+			`;
 			// Renombrar
 			li.querySelector('.rename-input').addEventListener('change', function () {
 				const newName = this.value;
@@ -312,9 +396,12 @@ btnRecord?.addEventListener('click', async () => {
 		btnRecord.title = 'Grabando...';
 		btnRecord.style.background = 'linear-gradient(90deg,#fffc00,#ff0066)';
 		btnRecord.style.color = '#232526';
-		// Iniciar timer
+		// Iniciar timer y VU Meter
 		window.recordingTimer?.start();
-		window.toast?.info('Grabación iniciada');
+		if (window.vuMeter && audioStream) {
+			window.vuMeter.start(audioStream);
+		}
+		window.toast?.info('🎙️ Grabación iniciada');
 	}
 });
 
@@ -349,9 +436,12 @@ btnStop?.addEventListener('click', () => {
 	btnRecord.style.color = '';
 	btnPause.innerHTML = '<i class="fa-solid fa-pause"></i>';
 	btnPause.title = 'Pausar';
-	// Detener timer
+	// Detener timer y VU Meter
 	window.recordingTimer?.stop();
-	window.toast?.success('Grabación finalizada');
+	if (window.vuMeter) {
+		window.vuMeter.stop();
+	}
+	window.toast?.success('✅ Grabación finalizada');
 });
 
 // --- Control de volumen de grabación ---
