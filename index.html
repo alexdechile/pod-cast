@@ -70,88 +70,47 @@
     </aside>
     <div id="resizer" class="resizer"></div>
     <main class="main-panel">
-      <!-- Editor de sonido minimalista -->
-      <div id="sound-editor" class="card mt-auto w-100">
-        <div class="card-body p-4">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <span class="logo-cocava"> <i class="fa-solid fa-sliders"></i> editor de sonido</span>
-            <div class="d-flex gap-2">
-              <button id="editor-preview" class="btn btn-success"><i class="fa-solid fa-play"></i>
-                Previsualizar</button>
-              <button id="editor-export" class="btn btn-primary"><i class="fa-solid fa-download"></i> Exportar</button>
+      <!-- DAW Estilo Profesional -->
+      <div id="daw-container" class="daw-layout">
+        <!-- Toolbar Superior -->
+        <div class="daw-toolbar">
+          <div class="d-flex align-items-center gap-3">
+            <span class="daw-logo"><i class="fa-solid fa-wave-square text-primary"></i> STUDIO</span>
+            <div class="daw-divider"></div>
+            <div class="btn-group">
+              <button id="daw-btn-play" class="btn btn-daw" title="Play/Pause"><i class="fa-solid fa-play"></i></button>
+              <button id="daw-btn-stop" class="btn btn-daw" title="Stop"><i class="fa-solid fa-stop"></i></button>
+              <button id="daw-btn-loop" class="btn btn-daw" title="Loop"><i class="fa-solid fa-repeat"></i></button>
+            </div>
+            <div class="daw-divider"></div>
+            <div class="daw-time-display">
+              <span id="daw-current-time">00:00:00</span>
             </div>
           </div>
-          <div class="mb-3">
-            <div id="editor-timeline-container" class="position-relative mb-3 bg-dark rounded border border-secondary"
-              style="height: 120px; overflow: hidden;"></div>
-            <div id="editor-transport" class="d-flex align-items-center gap-2 mb-2">
-              <button id="editor-btn-play" class="btn btn-primary"><i class="fa-solid fa-play"></i></button>
-              <button id="editor-btn-stop" class="btn btn-secondary"><i class="fa-solid fa-stop"></i></button>
-              <span id="editor-time-display" class="font-monospace ms-2">00:00.00</span>
-              <span class="text-muted ms-auto small">Clips: <span id="editor-clip-count">0</span></span>
-            </div>
-            <!-- <audio id="editor-audio-preview" controls></audio> -->
-          </div>
-          <div class="mb-3 d-flex align-items-center gap-3">
-            <label class="form-label mb-0">Edición:</label>
-            <button id="editor-cut" class="btn btn-outline-danger btn-sm me-1" title="Cortar"><i
-                class="fa-solid fa-scissors"></i></button>
-            <button id="editor-copy" class="btn btn-outline-secondary btn-sm me-1" title="Copiar"><i
-                class="fa-solid fa-copy"></i></button>
-            <button id="editor-paste" class="btn btn-outline-success btn-sm me-1" title="Pegar"><i
-                class="fa-solid fa-paste"></i></button>
-            <button id="editor-trim" class="btn btn-outline-warning btn-sm me-1" title="Recortar"><i
-                class="fa-solid fa-crop"></i></button>
-            <input type="range" id="editor-trim-start" min="0" max="100" value="0" class="form-range w-25">
-            <span id="editor-trim-start-label" class="text-secondary small">Inicio</span>
-            <input type="range" id="editor-trim-end" min="0" max="100" value="100" class="form-range w-25">
-            <span id="editor-trim-end-label" class="text-secondary small">Fin</span>
-          </div>
-          <div class="mb-3 d-flex flex-wrap gap-3">
-            <div>
-              <label class="form-label">Efectos:</label><br>
-              <button id="editor-robot" class="btn btn-outline-info btn-sm me-1">Robot</button>
-              <button id="editor-echo" class="btn btn-outline-info btn-sm me-1">Eco</button>
-              <button id="editor-pitch" class="btn btn-outline-info btn-sm me-1">Pitch</button>
-              <input type="range" id="editor-pitch-slider" min="-12" max="12" value="2" step="1"
-                class="form-range w-25">
-              <span id="editor-pitch-value" class="text-secondary small">+2</span>
-              <input type="range" id="editor-echo-slider" min="0" max="500" value="180" step="10"
-                class="form-range w-25">
-              <span id="editor-echo-value" class="text-secondary small">180ms</span>
-              <button id="editor-normalize" class="btn btn-outline-success btn-sm me-1">Normalizar</button>
-              <button id="editor-hpf" class="btn btn-outline-info btn-sm me-1">Pasa altos</button>
-              <button id="editor-lpf" class="btn btn-outline-info btn-sm me-1">Pasa bajos</button>
-              <button id="editor-antipop" class="btn btn-outline-info btn-sm me-1">Anti-pop</button>
-              <button id="editor-compress" class="btn btn-outline-warning btn-sm">Compresión extra</button>
-            </div>
-            <div>
-              <label class="form-label">Multi-pista:</label><br>
-              <button id="editor-add-track" class="btn btn-outline-primary btn-sm me-1"><i class="fa-solid fa-plus"></i>
-                Añadir pista</button>
-              <button id="editor-mix-tracks" class="btn btn-outline-success btn-sm me-1"><i
-                  class="fa-solid fa-sliders"></i> Mezclar</button>
-              <span id="editor-track-list" class="text-secondary small"></span>
-            </div>
-            <div>
-              <label class="form-label">Agregar tonos:</label><br>
-              <button id="editor-add-cortina" class="btn btn-outline-primary btn-sm me-1">Cortina</button>
-              <button id="editor-add-cortina-cierre" class="btn btn-outline-secondary btn-sm me-1">Cierre</button>
-              <button id="editor-add-tecla" class="btn btn-outline-dark btn-sm me-1">Tecla cassette</button>
-              <button id="editor-add-pacman" class="btn btn-outline-warning btn-sm">Pac-Man</button>
-            </div>
-            <div>
-              <label class="form-label">Música de fondo:</label><br>
-              <input type="file" id="editor-bg-music" accept="audio/*" class="form-control form-control-sm mb-1">
-              <input type="range" id="editor-bg-volume" min="0" max="1" step="0.01" value="0.3" class="form-range w-50">
-              <span class="text-secondary small">Volumen</span>
-            </div>
-          </div>
-          <div class="d-flex justify-content-end gap-2 mt-4">
-            <!-- Botones movidos arriba -->
+          <div class="d-flex align-items-center gap-2">
+            <button id="daw-btn-zoom-out" class="btn btn-daw-sm"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+            <input type="range" id="daw-zoom-slider" min="1" max="100" value="10" class="daw-slider">
+            <button id="daw-btn-zoom-in" class="btn btn-daw-sm"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+            <div class="daw-divider"></div>
+            <button id="daw-btn-export" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-file-export"></i> EXPORTAR</button>
           </div>
         </div>
+
+        <!-- Área de Trabajo (Tracks + Timeline) -->
+        <div class="daw-work-area">
+          <div id="multitrack-container"></div>
+        </div>
+        
+        <!-- Drop Zone Overlay -->
+        <div id="daw-drop-zone" class="daw-drop-overlay">
+          <div class="drop-message">
+            <i class="fa-solid fa-cloud-arrow-down fa-3x mb-3"></i>
+            <h4>Suelta el audio para añadir pista</h4>
+          </div>
+        </div>
+      </div>
     </main>
+  </div>
   </div>
   <!-- Modal de permiso fuera del dashboard-container para evitar stacking context -->
   <div class="modal fade" id="permissionModal" tabindex="-1" aria-labelledby="permissionModalLabel" aria-hidden="true"
@@ -250,6 +209,11 @@
   </div>
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- WaveSurfer v7 Core and Plugins -->
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js"></script>
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/multitrack.min.js"></script>
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js"></script>
+  <script src="https://unpkg.com/wavesurfer.js@7/dist/plugins/timeline.min.js"></script>
   <!-- Nuevos componentes de UI - FASE 1 -->
   <script src="js/notifications.js?v=2.3.1"></script>
   <script src="js/timer.js?v=2.3.1"></script>

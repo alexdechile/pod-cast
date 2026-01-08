@@ -107,65 +107,169 @@ body.resizing {
   border: none;
 }
 
-#playlist {
-  background:transparent;
+/* === DAW LAYOUT === */
+.daw-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #121212;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.05);
 }
 
-#sound-editor {
-  background: #232526;
+.daw-toolbar {
+  height: 60px;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  flex-shrink: 0;
+}
+
+.daw-logo {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  color: #fff;
+  opacity: 0.9;
+}
+
+.daw-divider {
+  width: 1px;
+  height: 24px;
+  background: #333;
+  margin: 0 0.5rem;
+}
+
+.daw-time-display {
+  background: #000;
+  color: #00ff00;
+  font-family: 'monospace';
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  border: 1px solid #222;
+  text-shadow: 0 0 10px rgba(0,255,0,0.3);
+}
+
+.btn-daw {
+  background: transparent;
   border: none;
-  box-shadow: 0 2px 16px 0 rgba(80,80,80,0.10);
-  border-radius: 1.2rem;
-  max-width: 100%;
+  color: #aaa;
+  font-size: 1.1rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 6px;
+  transition: all 0.2s;
 }
 
-#sound-editor .card-body {
-  width:100%;
-  color:#e0e0e0;
+.btn-daw:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.05);
 }
 
-#sound-editor .logo-cocava {
-  font-size:1.2rem;
-  padding:0.2rem 0.7rem;
-  margin:0;
-  background:linear-gradient(145deg,#232526 60%,#3a3a3a 100%);
-  color:#fffc00;
-  opacity:0.95;
-  border-radius:0.7rem;
-  border-width:1px;
+.btn-daw-sm {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 0.9rem;
+  padding: 0.2rem 0.4rem;
 }
 
-#editor-recording-select {
-  color:#e0e0e0;
-  background:#232526;
-  border:none;
+.btn-daw-sm:hover {
+  color: #fff;
 }
 
-#editor-audio-preview {
-  width:100%;
-  background:#18191a;
-  border-radius:0.5rem;
-  color:#e0e0e0;
+.daw-slider {
+  width: 100px;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  appearance: none;
+  outline: none;
 }
 
-#editor-trim-start-label, #editor-trim-end-label {
-  color:#e0e0e0;
+.daw-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #00c3ff;
+  border-radius: 50%;
+  cursor: pointer;
 }
 
-#editor-pitch-slider, #editor-echo-slider {
-  width:100px;
-  display:inline-block;
-  vertical-align:middle;
+.daw-work-area {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 
-#editor-pitch-value, #editor-echo-value {
-  width:40px;
-  display:inline-block;
+#multitrack-container {
+  min-height: 100%;
 }
 
-#editor-echo-value {
-    width:50px;
+/* Multitrack Customization */
+.wsm-track {
+  border-bottom: 1px solid #222 !important;
 }
+
+.wsm-header {
+  background: #1a1a1a !important;
+  border-right: 1px solid #333 !important;
+  color: #eee !important;
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 12px !important;
+}
+
+/* Drop Zone */
+.daw-drop-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 195, 255, 0.2);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 4px dashed #00c3ff;
+  pointer-events: none;
+}
+
+.daw-drop-overlay.active {
+  display: flex;
+}
+
+.drop-message {
+  text-align: center;
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .daw-toolbar {
+    padding: 0 0.5rem;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+}
+
+/* --- Eliminar estilos viejos del editor --- */
+#sound-editor, #editor-timeline-container, #editor-transport {
+  display: none;
+}
+
 
 .permission-modal .modal-content {
   background:#232526;

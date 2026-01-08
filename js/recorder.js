@@ -118,13 +118,25 @@ function loadPlaylist() {
 		recs.forEach(rec => {
 			const li = document.createElement('li');
 			li.className = 'list-group-item';
+			li.draggable = true; // Habilitar drag
 			li.style.cssText = `
 				background: transparent;
 				padding: 12px;
 				border: 1px solid rgba(255, 255, 255, 0.05);
 				border-radius: 8px;
 				margin-bottom: 8px;
+				cursor: grab;
 			`;
+			
+			// Evento para arrastrar datos
+			li.addEventListener('dragstart', (e) => {
+				e.dataTransfer.setData('recordingId', rec.id);
+				li.style.opacity = '0.5';
+			});
+			
+			li.addEventListener('dragend', () => {
+				li.style.opacity = '1';
+			});
 
 			const durationStr = window.playlistManager?.formatDuration(rec.duration) || '00:00';
 			const sizeStr = window.playlistManager?.formatSize(rec.size) || '0 KB';
