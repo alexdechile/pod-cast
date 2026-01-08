@@ -210,28 +210,40 @@
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   
-  <!-- WaveSurfer v7 Loading Strategy: ES Modules -->
+  <!-- WaveSurfer v7 Loading Strategy: ES Modules via esm.sh (CORS Friendly) -->
   <script type="module">
-    console.log("⏳ Iniciando carga de módulos WaveSurfer...");
+    console.log("⏳ Iniciando carga de módulos WaveSurfer desde esm.sh...");
     
     try {
-        const [{ default: WaveSurfer }, { default: Multitrack }] = await Promise.all([
-            import('https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.esm.js'),
-            import('https://unpkg.com/wavesurfer.js@7/dist/plugins/multitrack.esm.js')
+        // Usamos esm.sh que está optimizado para imports
+        const [
+            { default: WaveSurfer }, 
+            { default: Multitrack },
+            { default: Regions },
+            { default: Timeline }
+        ] = await Promise.all([
+            import('https://esm.sh/wavesurfer.js@7.5.0'),
+            import('https://esm.sh/wavesurfer.js@7.5.0/dist/plugins/multitrack.js'),
+            import('https://esm.sh/wavesurfer.js@7.5.0/dist/plugins/regions.js'),
+            import('https://esm.sh/wavesurfer.js@7.5.0/dist/plugins/timeline.js')
         ]);
 
         // Exponer globalmente
         window.WaveSurfer = WaveSurfer;
         window.Multitrack = Multitrack;
+        // Algunos plugins pueden necesitar estar bajo WaveSurfer
+        window.WaveSurfer.Multitrack = Multitrack;
+        window.WaveSurfer.Regions = Regions;
+        window.WaveSurfer.Timeline = Timeline;
         
-        console.log("✅ WaveSurfer y Multitrack cargados en window:", window.Multitrack);
+        console.log("✅ WaveSurfer y Multitrack cargados vía esm.sh:", window.Multitrack);
         
         // Avisar al resto de la app
         window.dispatchEvent(new Event('wavesurfer-ready'));
         
     } catch (error) {
         console.error("❌ Error fatal cargando módulos:", error);
-        document.body.innerHTML += `<div style="color:red; padding:20px; text-align:center;">Error cargando motor de audio: ${error.message}</div>`;
+        document.body.innerHTML += `<div style="color:red; padding:20px; text-align:center; background:rgba(0,0,0,0.8); position:fixed; top:0; left:0; width:100%; z-index:9999;">Error cargando motor de audio: ${error.message}</div>`;
     }
   </script>
 
