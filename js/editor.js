@@ -242,26 +242,20 @@ window.addRecordingToEditor = (rec) => {
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 editor.js cargado. Esperando Multitrack...');
-    waitForMultitrack();
-});
-
-function waitForMultitrack(attempts = 0) {
-    // Buscar la clase globalmente en window o dentro de WaveSurfer
-    const MultitrackClass = window.Multitrack || (window.WaveSurfer && window.WaveSurfer.Multitrack);
+    console.log('🚀 editor.js cargado. Esperando motor de audio...');
     
-    if (MultitrackClass) {
-        console.log('✅ Multitrack detectado tras', attempts, 'intentos');
-        window.Multitrack = MultitrackClass; // Asegurar referencia global simple
+    if (window.Multitrack) {
         initDAW();
     } else {
-        if (attempts < 50) { // Reintentar por 5 segundos (50 * 100ms)
-            setTimeout(() => waitForMultitrack(attempts + 1), 100);
-        } else {
-            console.error('❌ Error crítico: Multitrack no cargó después de 5 segundos.');
-            window.toast?.error('Error de conexión: No se pudo cargar el motor de audio.');
-        }
+        window.addEventListener('wavesurfer-ready', () => {
+            console.log('⚡ Evento wavesurfer-ready recibido');
+            initDAW();
+        });
     }
+});
+
+function waitForMultitrack() {
+    // Deprecated: Usamos eventos ahora
 }
 
 // Depuración Global de Drag & Drop
