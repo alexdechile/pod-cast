@@ -224,14 +224,6 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }, 'Activar micrófono');
 
-    // C - Compresión
-    window.keyboard.register('c', () => {
-        if (R.btnCompress) {
-            R.btnCompress.click();
-            window.toast?.info('Atajo: C - Compresión');
-        }
-    }, 'Toggle compresión');
-
     // Espacio - Play/Pause del audio seleccionado
     window.keyboard.register(' ', () => {
         if (window.editorWaveSurfer) {

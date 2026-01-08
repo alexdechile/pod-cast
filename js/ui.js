@@ -8,7 +8,6 @@ window.UI = {
         btnRecord: document.getElementById('btn-record'),
         btnPause: document.getElementById('btn-pause'),
         btnStop: document.getElementById('btn-stop'),
-        btnCompress: document.getElementById('btn-compress'),
         inputVolume: document.getElementById('input-volume'),
         waveformDiv: document.getElementById('waveform'),
         playlistUl: document.getElementById('playlist'),

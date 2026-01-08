@@ -1,5 +1,4 @@
 let mediaRecorder, audioChunks = [], audioStream = null, isRecording = false, isPaused = false, wavesurfer = null;
-let useCompressor = false;
 let recordingSegments = [];
 const DB_AUDIO = 'pod-cast';
 window.dbAudio = null;
@@ -261,23 +260,7 @@ window.UI.recorder.btnAllowMic?.addEventListener('click', async (e) => {
 
 		console.log('Permiso concedido, configurando audio...');
 
-		if (useCompressor) {
-			// ...
-			const ctx = new (window.AudioContext || window.webkitAudioContext)();
-			const source = ctx.createMediaStreamSource(stream);
-			const compressor = ctx.createDynamicsCompressor();
-			compressor.threshold.setValueAtTime(-30, ctx.currentTime);
-			compressor.knee.setValueAtTime(20, ctx.currentTime);
-			compressor.ratio.setValueAtTime(12, ctx.currentTime);
-			compressor.attack.setValueAtTime(0.003, ctx.currentTime);
-			compressor.release.setValueAtTime(0.25, ctx.currentTime);
-			source.connect(compressor);
-			const dest = ctx.createMediaStreamDestination();
-			compressor.connect(dest);
-			audioStream = dest.stream;
-		} else {
-			audioStream = stream;
-		}
+		audioStream = stream;
 
 		enableRecorderControls();
 		await loadWaveSurfer();
@@ -596,18 +579,6 @@ window.UI.recorder.inputVolume?.addEventListener('input', () => {
 		}
 	}
 	volInput.style.background = `linear-gradient(90deg,#00c3ff ${(volInput.value * 100)}%,#232526 ${(volInput.value * 100)}%)`;
-});
-
-// --- Compresión/Mejora de audio real ---
-window.UI.recorder.btnCompress?.addEventListener('click', () => {
-	const btn = window.UI.recorder.btnCompress;
-	useCompressor = !useCompressor;
-	btn.classList.toggle('btn-warning', useCompressor);
-	btn.classList.toggle('btn-dark', !useCompressor);
-	btn.title = useCompressor ? 'Compresión activada' : 'Mejorar audio';
-	btn.innerHTML = useCompressor
-		? '<i class="fa-solid fa-wand-magic-sparkles"></i> ON'
-		: '<i class="fa-solid fa-wand-magic-sparkles"></i>';
 });
 
 /**
