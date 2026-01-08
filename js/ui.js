@@ -12,7 +12,11 @@ window.UI = {
         inputVolume: document.getElementById('input-volume'),
         waveformDiv: document.getElementById('waveform'),
         playlistUl: document.getElementById('playlist'),
-        timerContainer: document.getElementById('timer-container')
+        timerContainer: document.getElementById('timer-container'),
+        segmentsSection: document.getElementById('recording-segments'),
+        segmentNameInput: document.getElementById('current-segment-name'),
+        btnSaveSegment: document.getElementById('btn-save-segment'),
+        segmentsList: document.getElementById('segments-list')
     },
     editor: {
         // audioPreview: document.getElementById('editor-audio-preview'), // Deprecated
@@ -46,12 +50,6 @@ window.UI = {
         btnAntipop: document.getElementById('editor-antipop'),
         btnCompress: document.getElementById('editor-compress')
     },
-    tones: {
-        btnPacman: document.getElementById('btn-pacman'),
-        btnTeclaCassette: document.getElementById('btn-tecla-cassette'),
-        btnCortinaCierre: document.getElementById('btn-cortina-cierre'),
-        btnCortina: document.getElementById('btn-cortina')
-    },
     modals: {
         // Inicializar instancia de Bootstrap solo cuando sea necesario
         _permissionModal: null,
@@ -63,5 +61,36 @@ window.UI = {
         }
     }
 };
+
+// Lógica del Resizer
+(function initResizer() {
+    const resizer = document.getElementById('resizer');
+    const sidebar = document.querySelector('.sidebar');
+    let isResizing = false;
+
+    if (!resizer || !sidebar) return;
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', stopResizing);
+    });
+
+    function handleMouseMove(e) {
+        if (!isResizing) return;
+        const newWidth = e.clientX;
+        if (newWidth > 300 && newWidth < window.innerWidth * 0.6) {
+            sidebar.style.width = `${newWidth}px`;
+        }
+    }
+
+    function stopResizing() {
+        isResizing = false;
+        document.body.style.cursor = 'default';
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', stopResizing);
+    }
+})();
 
 

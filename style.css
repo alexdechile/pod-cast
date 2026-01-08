@@ -11,8 +11,9 @@ body {
   box-shadow: 0 8px 32px 0 rgba(31,38,135,0.15);
 }
 .sidebar {
-  width: 33.33%;
-  min-width: 320px;
+  width: 350px;
+  min-width: 300px;
+  max-width: 50%;
   background: linear-gradient(135deg, #232526 0%, #2c3e50 100%);
   box-shadow: 2px 0 16px 0 rgba(80,80,80,0.12);
   display: flex;
@@ -21,55 +22,35 @@ body {
   position: relative;
   z-index: 1;
 }
-.modal {
-  z-index: 1055 !important;
+.resizer {
+  width: 4px;
+  cursor: col-resize;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s;
+  z-index: 10;
 }
-.main-panel {
-  flex: 1;
-  background: linear-gradient(135deg, #232526 0%, #434343 100%);
-  box-shadow: -2px 0 16px 0 rgba(80,80,80,0.10);
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.logo-cocava {
-  font-family: 'Anton', sans-serif;
-  font-size: 2.2rem;
-  letter-spacing: 0.08em;
-  color: #b0b3b8;
-  text-transform: lowercase;
-  background: linear-gradient(145deg, #232526 60%, #3a3a3a 100%);
-  box-shadow: inset 2px 2px 8px #18191a, inset -2px -2px 8px #44474a;
-  border-radius: 1.2rem;
-  padding: 0.5rem 1.2rem 0.5rem 1.2rem;
-  margin-bottom: 2.5rem;
-  margin-left: -0.5rem;
-  width: fit-content;
-  filter: brightness(0.85) blur(0.1px);
-  opacity: 0.85;
-  user-select: none;
-  box-sizing: border-box;
-  border: 1.5px solid #232526;
-  text-shadow: 0 2px 6px #18191a, 0 1px 0 #232526;
-}
-/* Sutiles sombras y colores metálicos */
-.sidebar, .main-panel {
-  border-radius: 1.2rem;
-  box-shadow: 0 4px 24px 0 rgba(120,130,140,0.10), 0 1.5px 0 0 #232526;
+.resizer:hover {
+  background-color: #00c3ff;
 }
 @media (max-width: 900px) {
+  .resizer {
+    display: none;
+  }
   .dashboard-container {
     flex-direction: column;
+    height: auto;
   }
   .sidebar {
     width: 100%;
+    max-width: 100%;
     min-width: unset;
     border-radius: 0 0 1.2rem 1.2rem;
+    height: auto;
   }
   .main-panel {
     border-radius: 1.2rem 1.2rem 0 0;
+    padding: 1rem;
+    height: auto;
   }
 }
 

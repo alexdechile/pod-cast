@@ -191,7 +191,6 @@ window.keyboard = new KeyboardShortcuts();
 window.addEventListener('DOMContentLoaded', () => {
     const R = window.UI.recorder;
     const E = window.UI.editor;
-    const T = window.UI.tones;
 
     // R - Grabar/Detener
     window.keyboard.register('r', () => {
@@ -235,14 +234,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
     // Espacio - Play/Pause del audio seleccionado
     window.keyboard.register(' ', () => {
-        const audioPreview = E.audioPreview;
-        if (audioPreview && audioPreview.src) {
-            if (audioPreview.paused) {
-                audioPreview.play();
-                window.toast?.info('▶️ Reproduciendo');
-            } else {
-                audioPreview.pause();
+        if (window.editorWaveSurfer) {
+            if (window.editorWaveSurfer.isPlaying()) {
+                window.editorWaveSurfer.pause();
                 window.toast?.info('⏸️ Pausado');
+            } else {
+                window.editorWaveSurfer.play();
+                window.toast?.info('▶️ Reproduciendo');
             }
         }
     }, 'Reproducir/Pausar');

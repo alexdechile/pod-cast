@@ -1,5 +1,6 @@
 let mediaRecorder, audioChunks = [], audioStream = null, isRecording = false, isPaused = false, wavesurfer = null;
 let useCompressor = false;
+let recordingSegments = [];
 const DB_AUDIO = 'pod-cast';
 window.dbAudio = null;
 let audioContext = null, analyser = null, dataArray = null, animationId = null;
@@ -509,6 +510,10 @@ window.UI.recorder.btnRecord?.addEventListener('click', async () => {
 		mediaRecorder.start();
 		isRecording = true;
 		isPaused = false;
+		recordingSegments = [];
+		if (window.UI.recorder.segmentsList) window.UI.recorder.segmentsList.innerHTML = '';
+		if (window.UI.recorder.segmentsSection) window.UI.recorder.segmentsSection.style.display = 'none';
+		
 		window.UI.recorder.btnRecord.disabled = true;
 		window.UI.recorder.btnPause.disabled = false;
 		window.UI.recorder.btnStop.disabled = false;
@@ -537,11 +542,39 @@ window.UI.recorder.btnPause?.addEventListener('click', () => {
 		mediaRecorder.pause();
 		window.recordingTimer?.pause();
 		window.toast?.warning('Grabación pausada');
+		
+		// Mostrar interfaz de segmentos
+		if (window.UI.recorder.segmentsSection) {
+			window.UI.recorder.segmentsSection.style.display = 'block';
+			window.UI.recorder.segmentNameInput.value = `Sección ${recordingSegments.length + 1}`;
+			window.UI.recorder.segmentNameInput.focus();
+		}
 	} else {
 		mediaRecorder.resume();
 		window.recordingTimer?.resume();
 		window.toast?.info('Grabación reanudada');
+		if (window.UI.recorder.segmentsSection) {
+			window.UI.recorder.segmentsSection.style.display = 'none';
+		}
 	}
+});
+
+// Guardar segmento
+window.UI.recorder.btnSaveSegment?.addEventListener('click', () => {
+	const name = window.UI.recorder.segmentNameInput.value || `Sección ${recordingSegments.length + 1}`;
+	const time = window.recordingTimer?.getTimeString() || "00:00";
+	
+	recordingSegments.push({ name, time });
+	
+	const li = document.createElement('li');
+	li.className = 'list-group-item bg-transparent text-white-50 border-0 ps-0 py-1';
+	li.innerHTML = `<i class="fa-solid fa-bookmark text-primary me-2"></i> <strong>${time}</strong> - ${name}`;
+	window.UI.recorder.segmentsList.appendChild(li);
+	
+	window.toast?.success('Sección marcada');
+	
+	// Volver a grabar automáticamente si se desea o dejar que el usuario pulse reanudar
+	// Por simplicidad, dejamos que el usuario pulse reanudar.
 });
 
 // --- Botón Stop ---
@@ -576,120 +609,6 @@ window.UI.recorder.btnCompress?.addEventListener('click', () => {
 		? '<i class="fa-solid fa-wand-magic-sparkles"></i> ON'
 		: '<i class="fa-solid fa-wand-magic-sparkles"></i>';
 });
-
-// --- Tonos y Efectos (UI Elements ya definidos en ui.js) ---
-
-// --- Simulación de sonido Pac-Man ---
-if (window.UI.tones.btnPacman) {
-	window.UI.tones.btnPacman.addEventListener('click', () => {
-		const ctx = new (window.AudioContext || window.webkitAudioContext)();
-		// ... (rest unchanged) ...
-		const osc = ctx.createOscillator();
-		const gain = ctx.createGain();
-		osc.type = 'square';
-		osc.frequency.setValueAtTime(880, ctx.currentTime);
-		osc.frequency.linearRampToValueAtTime(440, ctx.currentTime + 0.18);
-		gain.gain.setValueAtTime(0.22, ctx.currentTime);
-		gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.19);
-		osc.connect(gain).connect(ctx.destination);
-		osc.start();
-		osc.stop(ctx.currentTime + 0.2);
-		setTimeout(() => ctx.close(), 300);
-	});
-}
-
-// --- Simulación de tecla de grabadora de cassette ---
-if (window.UI.tones.btnTeclaCassette) {
-	window.UI.tones.btnTeclaCassette.addEventListener('click', () => {
-		const ctx = new (window.AudioContext || window.webkitAudioContext)();
-		const bufferSize = 2048;
-		const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-		const data = buffer.getChannelData(0);
-		for (let i = 0; i < bufferSize; i++) {
-			data[i] = (Math.random() * 2 - 1) * 0.7;
-		}
-		const noise = ctx.createBufferSource();
-		noise.buffer = buffer;
-		const filter = ctx.createBiquadFilter();
-		filter.type = 'highpass';
-		filter.frequency.value = 1200;
-		const gain = ctx.createGain();
-		gain.gain.setValueAtTime(0, ctx.currentTime);
-		gain.gain.linearRampToValueAtTime(0.22, ctx.currentTime + 0.01);
-		gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.09);
-		noise.connect(filter).connect(gain).connect(ctx.destination);
-		noise.start();
-		noise.stop(ctx.currentTime + 0.1);
-		setTimeout(() => ctx.close(), 180);
-	});
-}
-
-// --- Generador de tonos: Cortina cierre ---
-if (window.UI.tones.btnCortinaCierre) {
-	window.UI.tones.btnCortinaCierre.addEventListener('click', () => {
-		const notes = [440.00, 392.00, 329.63, 261.63, 329.63, 392.00, 440.00];
-		// ... (rest unchanged) ...
-		const longDur = 0.64;
-		const shortDur = 0.32;
-		const durations = [longDur, longDur, longDur, shortDur, shortDur, shortDur, shortDur];
-		const ctx = new (window.AudioContext || window.webkitAudioContext)();
-		let now = ctx.currentTime;
-		let t = now;
-		notes.forEach((freq, i) => {
-			const osc1 = ctx.createOscillator();
-			const gain1 = ctx.createGain();
-			osc1.type = 'triangle';
-			osc1.frequency.value = freq;
-			gain1.gain.value = 0.16;
-			osc1.connect(gain1).connect(ctx.destination);
-			osc1.start(t);
-			osc1.stop(t + durations[i] - 0.04);
-			const osc2 = ctx.createOscillator();
-			const gain2 = ctx.createGain();
-			osc2.type = 'triangle';
-			osc2.frequency.value = freq / 2;
-			gain2.gain.value = 0.11;
-			osc2.connect(gain2).connect(ctx.destination);
-			osc2.start(t);
-			osc2.stop(t + durations[i] - 0.04);
-			t += durations[i];
-		});
-		setTimeout(() => ctx.close(), durations.reduce((a, b) => a + b, 0) * 1000 + 200);
-	});
-}
-
-// --- Generador de tonos: Cortina ---
-if (window.UI.tones.btnCortina) {
-	window.UI.tones.btnCortina.addEventListener('click', () => {
-		const notes = [261.63, 329.63, 392.00, 440.00, 392.00, 329.63, 261.63];
-		const longDur = 0.64;
-		const shortDur = 0.32;
-		const durations = [longDur, longDur, longDur, shortDur, shortDur, shortDur, shortDur];
-		const ctx = new (window.AudioContext || window.webkitAudioContext)();
-		let now = ctx.currentTime;
-		let t = now;
-		notes.forEach((freq, i) => {
-			const osc1 = ctx.createOscillator();
-			const gain1 = ctx.createGain();
-			osc1.type = 'triangle';
-			osc1.frequency.value = freq;
-			gain1.gain.value = 0.16;
-			osc1.connect(gain1).connect(ctx.destination);
-			osc1.start(t);
-			osc1.stop(t + durations[i] - 0.04);
-			const osc2 = ctx.createOscillator();
-			const gain2 = ctx.createGain();
-			osc2.type = 'triangle';
-			osc2.frequency.value = freq / 2;
-			gain2.gain.value = 0.11;
-			osc2.connect(gain2).connect(ctx.destination);
-			osc2.start(t);
-			osc2.stop(t + durations[i] - 0.04);
-			t += durations[i];
-		});
-		setTimeout(() => ctx.close(), durations.reduce((a, b) => a + b, 0) * 1000 + 200);
-	});
-}
 
 /**
  * Agrega una grabación al editor como un nuevo clip
