@@ -148,43 +148,66 @@ function setupDAWDragAndDrop() {
   const dropZone = document.getElementById('daw-container');
   const overlay = document.getElementById('daw-drop-zone');
   
-  if (!dropZone) return;
+  if (!dropZone) {
+      console.error('❌ Contenedor DAW no encontrado para eventos Drop');
+      return;
+  }
+
+  // Usamos el contenedor principal para capturar eventos
+  // IMPORTANTE: dragenter y dragover deben tener preventDefault()
+  dropZone.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (overlay) overlay.classList.add('active');
+    console.log('➡️ Drag Enter DAW');
+  });
 
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    if (overlay) overlay.classList.add('active');
+    e.stopPropagation();
+    if (overlay && !overlay.classList.contains('active')) overlay.classList.add('active');
   });
 
-  dropZone.addEventListener('dragleave', () => {
-    if (overlay) overlay.classList.remove('active');
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Solo quitar si salimos del contenedor padre, no si entramos en un hijo
+    if (e.target === dropZone || e.target === overlay) {
+       if (overlay) overlay.classList.remove('active');
+       console.log('⬅️ Drag Leave DAW');
+    }
   });
 
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (overlay) overlay.classList.remove('active');
     
-    console.log('🎯 DROP detectado');
+    console.log('🎯 DROP REALIZADO en DAW');
+    console.log('   DataTransfer types:', e.dataTransfer.types);
 
     // 1. Archivos externos
-    if (e.dataTransfer.files.length > 0) {
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
-      console.log('📂 Archivo soltado:', file.name);
-      if (file.type.startsWith('audio/')) {
+      console.log('📂 Archivo recibido:', file.name, file.type);
+      if (file.type.startsWith('audio/') || file.name.endsWith('.mp3') || file.name.endsWith('.wav')) {
         addAudioToDAW(file, file.name);
       } else {
-          window.toast?.warning('Solo se admiten archivos de audio');
+          window.toast?.warning('El archivo no parece ser de audio');
       }
       return;
     }
     
     // 2. Elementos internos (Playlist)
+    // Intentar obtener texto/plain por si acaso
     const recordingIdRaw = e.dataTransfer.getData('recordingId');
-    console.log('🎵 ID Grabación recibido:', recordingIdRaw);
+    console.log('🎵 ID Grabación (recordingId):', recordingIdRaw);
     
     if (recordingIdRaw) {
        loadAndAddRecording(parseInt(recordingIdRaw));
     } else {
-        console.warn('⚠️ No se encontró ID de grabación en el evento drop');
+        console.warn('⚠️ No se detectaron archivos ni ID de grabación válido');
+        window.toast?.warning('No se pudo leer el elemento arrastrado');
     }
   });
 }
@@ -217,11 +240,40 @@ window.addRecordingToEditor = (rec) => {
     addAudioToDAW(rec.blob, rec.name);
 };
 
-// Inicializar cuando el DOM esté listo y WaveSurfer cargado
+// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.Multitrack) {
+    console.log('🚀 editor.js cargado. Esperando Multitrack...');
+    waitForMultitrack();
+});
+
+function waitForMultitrack(attempts = 0) {
+    // Buscar la clase globalmente en window o dentro de WaveSurfer
+    const MultitrackClass = window.Multitrack || (window.WaveSurfer && window.WaveSurfer.Multitrack);
+    
+    if (MultitrackClass) {
+        console.log('✅ Multitrack detectado tras', attempts, 'intentos');
+        window.Multitrack = MultitrackClass; // Asegurar referencia global simple
         initDAW();
     } else {
-        window.addEventListener('wavesurfer-ready', initDAW);
+        if (attempts < 50) { // Reintentar por 5 segundos (50 * 100ms)
+            setTimeout(() => waitForMultitrack(attempts + 1), 100);
+        } else {
+            console.error('❌ Error crítico: Multitrack no cargó después de 5 segundos.');
+            window.toast?.error('Error de conexión: No se pudo cargar el motor de audio.');
+        }
     }
-});
+}
+
+// Depuración Global de Drag & Drop
+document.addEventListener('dragover', (e) => {
+    // Esto es vital: Prevenir el default globalmente permite que el drop funcione en zonas específicas
+    e.preventDefault(); 
+}, false);
+
+document.addEventListener('drop', (e) => {
+    // Evitar que el navegador abra el archivo si se suelta fuera de la zona segura
+    if (e.target.id !== 'daw-container' && !e.target.closest('#daw-container')) {
+        e.preventDefault();
+        console.log('⚠️ Drop fuera de zona detectado y prevenido');
+    }
+}, false);
