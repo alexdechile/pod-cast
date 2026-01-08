@@ -217,5 +217,11 @@ window.addRecordingToEditor = (rec) => {
     addAudioToDAW(rec.blob, rec.name);
 };
 
-// Inicializar cuando el DOM esté listo
-document.addEventListener('DOMContentLoaded', initDAW);
+// Inicializar cuando el DOM esté listo y WaveSurfer cargado
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.Multitrack) {
+        initDAW();
+    } else {
+        window.addEventListener('wavesurfer-ready', initDAW);
+    }
+});

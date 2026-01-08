@@ -15,8 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 	// --- Inicialización ---
 	initAudioDB();
-	// Refrescar la lista del editor al cargar por primera vez
-	setTimeout(populateEditorRecordings, 500);
 
 	// Mostrar modal de permisos automáticamente al cargar
 	setTimeout(() => {

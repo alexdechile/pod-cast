@@ -107,8 +107,8 @@ class RecordingTimer {
 window.recordingTimer = new RecordingTimer();
 
 // Agregar animaciones CSS
-const style = document.createElement('style');
-style.textContent = `
+const timerStyle = document.createElement('style');
+timerStyle.textContent = `
     @keyframes blink {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.3; }
@@ -123,4 +123,4 @@ style.textContent = `
         }
     }
 `;
-document.head.appendChild(style);
+document.head.appendChild(timerStyle);

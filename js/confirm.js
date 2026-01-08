@@ -183,8 +183,8 @@ class ConfirmDialog {
 window.confirm = new ConfirmDialog();
 
 // Agregar animaciones CSS
-const style = document.createElement('style');
-style.textContent = `
+const confirmStyle = document.createElement('style');
+confirmStyle.textContent = `
     @keyframes fadeIn {
         from { opacity: 0; }
         to { opacity: 1; }
@@ -217,4 +217,4 @@ style.textContent = `
         }
     }
 `;
-document.head.appendChild(style);
+document.head.appendChild(confirmStyle);
