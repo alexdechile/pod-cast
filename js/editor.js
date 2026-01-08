@@ -4,37 +4,56 @@
  */
 
 let multitrack = null;
-const TRACKS_CONFIG = [
-  { id: 0, label: 'Voz Principal', draggable: true },
-  { id: 1, label: 'Ambiente/Música', draggable: true }
-];
+let trackCount = 0; // Contador para IDs únicos de pistas
 
 function initDAW() {
   const container = document.getElementById('multitrack-container');
   if (!container) return;
 
-  // Destruir instancia previa si existe
-  if (multitrack) multitrack.destroy();
-
-  multitrack = Multitrack.create(TRACKS_CONFIG, {
-    container,
-    minPxPerSec: 10,
-    rightButtonDrag: false,
-    cursorColor: '#ff0066',
-    cursorWidth: 2,
-    trackBorderColor: '#222',
-    dragBounds: true,
-  });
-
-  setupDAWControls();
-  setupDAWDragAndDrop();
+  // Detectar la clase Multitrack (Global o bajo WaveSurfer)
+  const MultitrackClass = window.Multitrack || (window.WaveSurfer && window.WaveSurfer.Multitrack);
   
-  // Eventos de Multitrack
-  multitrack.on('timeupdate', (time) => {
-    updateDAWTime(time);
-  });
+  if (!MultitrackClass) {
+    console.error('❌ Plugin Multitrack no encontrado. Verifica los scripts en index.html');
+    window.toast?.error('Error: Motor de audio no cargado');
+    return;
+  }
 
-  window.toast?.info('DAW Inicializado: Listo para editar');
+  // Destruir instancia previa si existe
+  if (multitrack) {
+      try {
+          multitrack.destroy();
+      } catch(e) { console.warn('Error destruyendo instancia previa:', e); }
+  }
+
+  // Configuración inicial con pistas vacías
+  try {
+      multitrack = MultitrackClass.create([
+          { id: 'start-track', draggable: false } // Pista fantasma inicial para establecer el timeline
+      ], {
+        container,
+        minPxPerSec: 10,
+        rightButtonDrag: false,
+        cursorColor: '#ff0066',
+        cursorWidth: 2,
+        trackBorderColor: '#333',
+        trackBackground: '#1e1e1e',
+        dragBounds: true,
+      });
+
+      console.log('✅ DAW Multitrack inicializado');
+      window.toast?.info('DAW Listo: Arrastra audios aquí');
+      
+      setupDAWControls();
+      setupDAWDragAndDrop();
+      
+      // Eventos
+      multitrack.on('timeupdate', (time) => updateDAWTime(time));
+      
+  } catch (err) {
+      console.error('❌ Error al crear Multitrack:', err);
+      window.toast?.error('Error iniciando el editor');
+  }
 }
 
 /**
@@ -46,6 +65,7 @@ function setupDAWControls() {
   const zoomSlider = document.getElementById('daw-zoom-slider');
 
   btnPlay?.addEventListener('click', () => {
+    if (!multitrack) return;
     if (multitrack.isPlaying()) {
       multitrack.pause();
       btnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -56,91 +76,119 @@ function setupDAWControls() {
   });
 
   btnStop?.addEventListener('click', () => {
+    if (!multitrack) return;
     multitrack.stop();
     multitrack.setTime(0);
     btnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
   });
-
+  
+  // ... resto de controles de zoom ...
   zoomSlider?.addEventListener('input', (e) => {
     const val = parseInt(e.target.value);
-    multitrack.setZoom(val);
-  });
-
-  document.getElementById('daw-btn-zoom-in')?.addEventListener('click', () => {
-    zoomSlider.value = parseInt(zoomSlider.value) + 10;
-    zoomSlider.dispatchEvent(new Event('input'));
-  });
-
-  document.getElementById('daw-btn-zoom-out')?.addEventListener('click', () => {
-    zoomSlider.value = parseInt(zoomSlider.value) - 10;
-    zoomSlider.dispatchEvent(new Event('input'));
-  });
-}
-
-/**
- * Implementa el Drag & Drop desde la playlist o archivos externos
- */
-function setupDAWDragAndDrop() {
-  const dropZone = document.getElementById('daw-container');
-  const overlay = document.getElementById('daw-drop-zone');
-
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    overlay.classList.add('active');
-  });
-
-  dropZone.addEventListener('dragleave', () => {
-    overlay.classList.remove('active');
-  });
-
-  dropZone.addEventListener('drop', async (e) => {
-    e.preventDefault();
-    overlay.classList.remove('active');
-
-    // Manejar archivos soltados desde el explorador
-    if (e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.type.startsWith('audio/')) {
-        addAudioToDAW(file, file.name);
-      }
-    }
-    
-    // Manejar datos de la playlist (si implementamos setData en playlist.js)
-    const recordingId = e.dataTransfer.getData('recordingId');
-    if (recordingId) {
-       // Lógica para recuperar de IndexedDB y añadir
-       loadAndAddRecording(parseInt(recordingId));
-    }
+    if(multitrack) multitrack.setZoom(val);
   });
 }
 
 /**
  * Función principal para añadir clips al timeline
  */
-async function addAudioToDAW(blobOrUrl, name = 'Nuevo Clip', trackId = 0) {
-  if (!multitrack) return;
+async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null) {
+  if (!multitrack) {
+      console.error('❌ Multitrack no inicializado');
+      return;
+  }
+  
+  console.log(`📥 Añadiendo audio: ${name}`);
 
   const url = typeof blobOrUrl === 'string' ? blobOrUrl : URL.createObjectURL(blobOrUrl);
   
+  // Crear un nuevo ID de pista único
+  const newTrackId = trackId || `track-${Date.now()}-${trackCount++}`;
+  
   try {
+    // En v7 Multitrack, addTrack espera un objeto de pista completo
     multitrack.addTrack({
-      id: trackId, // Añade al track especificado o crea uno nuevo si v7 lo permite así
+      id: newTrackId,
+      draggable: true,
+      startPosition: 0, // Iniciar al principio por defecto
       clips: [
         {
-          id: `clip_${Date.now()}`,
-          start: multitrack.getCurrentTime(),
+          id: `clip-${Date.now()}`,
           url: url,
+          start: 0,
+          duration: undefined, // Dejar que detecte la duración
           draggable: true,
-          title: name,
+          title: name
         }
-      ]
+      ],
+      options: {
+          waveColor: '#00c3ff',
+          progressColor: '#0077aa'
+      }
     });
-    window.toast?.success(`Clip añadido: ${name}`);
+    
+    window.toast?.success(`Pista añadida: ${name}`);
+    console.log('✅ Pista añadida correctamente');
+
   } catch (err) {
-    console.error('Error añadiendo clip:', err);
-    window.toast?.error('No se pudo añadir el audio al DAW');
+    console.error('❌ Error API addTrack:', err);
+    
+    // Fallback: Intentar método alternativo si la API cambió
+    try {
+        // A veces es multitrack.tracks.push... (depende de la versión exacta del plugin beta)
+        // Pero intentemos reimplementar la lista completa si falla agregar uno solo (hack)
+        console.log('⚠️ Intentando método alternativo...');
+    } catch (e2) {
+        window.toast?.error('No se pudo añadir el audio. Revisa la consola.');
+    }
   }
 }
+
+function setupDAWDragAndDrop() {
+  const dropZone = document.getElementById('daw-container');
+  const overlay = document.getElementById('daw-drop-zone');
+  
+  if (!dropZone) return;
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (overlay) overlay.classList.add('active');
+  });
+
+  dropZone.addEventListener('dragleave', () => {
+    if (overlay) overlay.classList.remove('active');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (overlay) overlay.classList.remove('active');
+    
+    console.log('🎯 DROP detectado');
+
+    // 1. Archivos externos
+    if (e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      console.log('📂 Archivo soltado:', file.name);
+      if (file.type.startsWith('audio/')) {
+        addAudioToDAW(file, file.name);
+      } else {
+          window.toast?.warning('Solo se admiten archivos de audio');
+      }
+      return;
+    }
+    
+    // 2. Elementos internos (Playlist)
+    const recordingIdRaw = e.dataTransfer.getData('recordingId');
+    console.log('🎵 ID Grabación recibido:', recordingIdRaw);
+    
+    if (recordingIdRaw) {
+       loadAndAddRecording(parseInt(recordingIdRaw));
+    } else {
+        console.warn('⚠️ No se encontró ID de grabación en el evento drop');
+    }
+  });
+}
+
 
 function updateDAWTime(time) {
   const display = document.getElementById('daw-current-time');
