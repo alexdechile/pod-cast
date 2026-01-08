@@ -71,23 +71,31 @@ window.UI = {
     if (!resizer || !sidebar) return;
 
     resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
         isResizing = true;
-        document.body.style.cursor = 'col-resize';
+        document.body.classList.add('resizing');
+        resizer.classList.add('active');
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', stopResizing);
     });
 
     function handleMouseMove(e) {
         if (!isResizing) return;
-        const newWidth = e.clientX;
-        if (newWidth > 300 && newWidth < window.innerWidth * 0.6) {
-            sidebar.style.width = `${newWidth}px`;
-        }
+        // Limitar el ancho mínimo y máximo
+        const minWidth = 300;
+        const maxWidth = window.innerWidth * 0.6;
+        let newWidth = e.clientX;
+        
+        if (newWidth < minWidth) newWidth = minWidth;
+        if (newWidth > maxWidth) newWidth = maxWidth;
+        
+        sidebar.style.width = `${newWidth}px`;
     }
 
     function stopResizing() {
         isResizing = false;
-        document.body.style.cursor = 'default';
+        document.body.classList.remove('resizing');
+        resizer.classList.remove('active');
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', stopResizing);
     }

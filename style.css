@@ -14,6 +14,7 @@ body {
   width: 350px;
   min-width: 300px;
   max-width: 50%;
+  flex-shrink: 0;
   background: linear-gradient(135deg, #232526 0%, #2c3e50 100%);
   box-shadow: 2px 0 16px 0 rgba(80,80,80,0.12);
   display: flex;
@@ -23,14 +24,19 @@ body {
   z-index: 1;
 }
 .resizer {
-  width: 4px;
+  width: 6px;
   cursor: col-resize;
   background-color: rgba(255, 255, 255, 0.05);
   transition: background-color 0.2s;
   z-index: 10;
+  flex-shrink: 0;
 }
-.resizer:hover {
+.resizer:hover, .resizer.active {
   background-color: #00c3ff;
+}
+body.resizing {
+  cursor: col-resize !important;
+  user-select: none;
 }
 @media (max-width: 900px) {
   .resizer {
