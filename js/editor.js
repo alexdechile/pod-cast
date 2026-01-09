@@ -167,7 +167,10 @@ function setupDAWControls() {
   const btnPlay = document.getElementById('daw-btn-play');
   const btnStop = document.getElementById('daw-btn-stop');
   const zoomSlider = document.getElementById('daw-zoom-slider');
-  const btnExport = document.getElementById('daw-btn-export'); // Referencia al botón exportar
+  const btnExport = document.getElementById('daw-btn-export');
+  const btnSaveProject = document.getElementById('daw-btn-save-project');
+  const btnLoadProject = document.getElementById('daw-btn-load-project');
+  const fileInput = document.getElementById('project-file-input');
 
   // Remover listeners antiguos para no duplicar (clonando nodo)
   const newBtnPlay = btnPlay?.cloneNode(true);
@@ -176,8 +179,14 @@ function setupDAWControls() {
   const newBtnStop = btnStop?.cloneNode(true);
   if(btnStop) btnStop.parentNode.replaceChild(newBtnStop, btnStop);
 
-  const newBtnExport = btnExport?.cloneNode(true); // Clonar botón exportar
+  const newBtnExport = btnExport?.cloneNode(true);
   if(btnExport) btnExport.parentNode.replaceChild(newBtnExport, btnExport);
+  
+  const newBtnSave = btnSaveProject?.cloneNode(true);
+  if(btnSaveProject) btnSaveProject.parentNode.replaceChild(newBtnSave, btnSaveProject);
+  
+  const newBtnLoad = btnLoadProject?.cloneNode(true);
+  if(btnLoadProject) btnLoadProject.parentNode.replaceChild(newBtnLoad, btnLoadProject);
 
   newBtnPlay?.addEventListener('click', () => {
     if (!multitrack) return;
@@ -202,7 +211,140 @@ function setupDAWControls() {
     if(multitrack) multitrack.setZoom(val);
   });
 
-  newBtnExport?.addEventListener('click', exportMix); // Listener para exportar
+  newBtnExport?.addEventListener('click', exportMix);
+  newBtnSave?.addEventListener('click', saveProject);
+  newBtnLoad?.addEventListener('click', () => fileInput?.click());
+  
+  fileInput?.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) loadProject(e.target.files[0]);
+      e.target.value = ''; // Reset
+  });
+}
+
+/**
+ * Guardar Proyecto completo (.pod / .zip)
+ */
+async function saveProject() {
+    if (!tracks.length || (tracks.length === 1 && tracks[0].id === 'start-track')) {
+        window.toast?.warning('No hay nada que guardar');
+        return;
+    }
+    
+    if (!window.JSZip) {
+        window.toast?.error('Error: Librería de compresión no cargada');
+        return;
+    }
+
+    window.toast?.info('📦 Empaquetando proyecto...');
+    console.log('📦 Guardando proyecto...');
+
+    try {
+        const zip = new window.JSZip();
+        const projectData = {
+            version: '1.0',
+            created: new Date().toISOString(),
+            tracks: []
+        };
+
+        // Procesar pistas
+        for (const track of tracks) {
+            if (track.id === 'start-track') continue;
+
+            const filename = `audio/${track.id}.blob`; // Usamos ID para nombre único
+            
+            // Obtener blob real
+            const response = await fetch(track.url);
+            const blob = await response.blob();
+            
+            // Añadir al ZIP
+            zip.file(filename, blob);
+
+            // Guardar metadatos (limpiando URL temporal)
+            projectData.tracks.push({
+                ...track,
+                url: null, // No guardamos el blob URL local
+                src: filename, // Referencia interna en el ZIP
+                // Asegurar guardar estado
+                muted: track.muted,
+                solo: track.solo,
+                volume: track.volume
+            });
+        }
+
+        // Añadir JSON de receta
+        zip.file('project.json', JSON.stringify(projectData, null, 2));
+
+        // Generar archivo
+        const content = await zip.generateAsync({type: 'blob'});
+        
+        // Descargar
+        const url = URL.createObjectURL(content);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `proyecto_podcast_${new Date().toISOString().slice(0,10)}.pod`;
+        a.click();
+        
+        window.toast?.success('✅ Proyecto guardado correctamente');
+
+    } catch (err) {
+        console.error('❌ Error guardando proyecto:', err);
+        window.toast?.error('Error al guardar el proyecto');
+    }
+}
+
+/**
+ * Cargar Proyecto (.pod)
+ */
+async function loadProject(file) {
+    if (!window.JSZip) return;
+    
+    window.toast?.info('📂 Abriendo proyecto...');
+    console.log('📂 Cargando:', file.name);
+
+    try {
+        const zip = await window.JSZip.loadAsync(file);
+        
+        // Leer receta
+        const jsonFile = zip.file('project.json');
+        if (!jsonFile) throw new Error('Archivo de proyecto inválido (falta project.json)');
+        
+        const projectData = JSON.parse(await jsonFile.async('string'));
+        console.log('📄 Receta cargada:', projectData);
+
+        // Reconstruir pistas
+        const newTracks = [{ id: 'start-track', draggable: false }];
+        
+        for (const tData of projectData.tracks) {
+            // Extraer audio del ZIP
+            const audioFile = zip.file(tData.src);
+            if (!audioFile) {
+                console.warn('⚠️ Audio perdido:', tData.src);
+                continue;
+            }
+            
+            const blob = await audioFile.async('blob');
+            const newUrl = URL.createObjectURL(blob);
+            
+            // Reconstruir objeto track completo
+            newTracks.push({
+                ...tData,
+                url: newUrl, // Nueva URL viva
+                draggable: true // Asegurar
+            });
+        }
+
+        // Actualizar estado global
+        tracks = newTracks;
+        
+        // Reiniciar DAW
+        initDAW();
+        
+        window.toast?.success('✅ Proyecto cargado exitosamente');
+
+    } catch (err) {
+        console.error('❌ Error cargando proyecto:', err);
+        window.toast?.error('No se pudo abrir el proyecto. Archivo dañado o formato incorrecto.');
+    }
 }
 
 /**

@@ -92,7 +92,12 @@
             <input type="range" id="daw-zoom-slider" min="1" max="100" value="10" class="daw-slider">
             <button id="daw-btn-zoom-in" class="btn btn-daw-sm"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
             <div class="daw-divider"></div>
+            <div class="btn-group me-2">
+              <button id="daw-btn-save-project" class="btn btn-outline-secondary btn-sm" title="Guardar Proyecto (.pod)"><i class="fa-solid fa-floppy-disk"></i></button>
+              <button id="daw-btn-load-project" class="btn btn-outline-secondary btn-sm" title="Abrir Proyecto (.pod)"><i class="fa-solid fa-folder-open"></i></button>
+            </div>
             <button id="daw-btn-export" class="btn btn-primary btn-sm px-3"><i class="fa-solid fa-file-export"></i> EXPORTAR</button>
+            <input type="file" id="project-file-input" accept=".pod,.zip" style="display: none;">
           </div>
         </div>
 
@@ -217,7 +222,8 @@
         "wavesurfer.js": "./js/vendor/wavesurfer.js",
         "wavesurfer-multitrack": "./js/vendor/multitrack.js",
         "wavesurfer-regions": "./js/vendor/regions.js",
-        "wavesurfer-timeline": "./js/vendor/timeline.js"
+        "wavesurfer-timeline": "./js/vendor/timeline.js",
+        "jszip": "./js/vendor/jszip.js"
       }
     }
   </script>
@@ -229,12 +235,14 @@
             { default: WaveSurfer }, 
             { default: Multitrack },
             { default: Regions },
-            { default: Timeline }
+            { default: Timeline },
+            { default: JSZip } // Cargar JSZip
         ] = await Promise.all([
             import('wavesurfer.js'),
             import('wavesurfer-multitrack'),
             import('wavesurfer-regions'),
-            import('wavesurfer-timeline')
+            import('wavesurfer-timeline'),
+            import('jszip')
         ]);
 
         // Exponer globalmente
@@ -244,8 +252,9 @@
         window.WaveSurfer.Multitrack = Multitrack;
         window.WaveSurfer.Regions = Regions;
         window.WaveSurfer.Timeline = Timeline;
+        window.JSZip = JSZip; // Exponer JSZip
         
-        console.log("✅ WaveSurfer y Multitrack cargados localmente:", window.Multitrack);
+        console.log("✅ WaveSurfer, Multitrack y JSZip cargados localmente:", window.Multitrack);
         
         // Avisar al resto de la app
         window.dispatchEvent(new Event('wavesurfer-ready'));
