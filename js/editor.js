@@ -106,24 +106,15 @@ async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null) {
   const newTrackId = trackId || `track-${Date.now()}-${trackCount++}`;
   
   try {
-    // En v7 Multitrack, addTrack espera un objeto de pista completo
+    // En v7 Multitrack, addTrack espera un objeto de pista
     multitrack.addTrack({
       id: newTrackId,
+      url: url,
+      startPosition: 0,
       draggable: true,
-      startPosition: 0, // Iniciar al principio por defecto
-      clips: [
-        {
-          id: `clip-${Date.now()}`,
-          url: url,
-          start: 0,
-          duration: undefined, // Dejar que detecte la duración
-          draggable: true,
-          title: name
-        }
-      ],
       options: {
-          waveColor: '#00c3ff',
-          progressColor: '#0077aa'
+        waveColor: '#00c3ff',
+        progressColor: '#0077aa'
       }
     });
     
