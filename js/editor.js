@@ -49,12 +49,115 @@ function initDAW() {
       setupDAWControls();
       setupDAWDragAndDrop();
       
+      // Eventos
       multitrack.on('timeupdate', (time) => updateDAWTime(time));
       
+      // Renderizar controles extra (Volumen/Mute/Solo)
+      renderTrackControls();
+
   } catch (err) {
       console.error('❌ Error al crear Multitrack:', err);
       window.toast?.error('Error iniciando el editor');
   }
+}
+
+/**
+ * Renderiza controles de pista (Vol, Mute, Solo) inyectándolos en el DOM del Multitrack
+ */
+function renderTrackControls() {
+    if (!multitrack || !multitrack.rendering || !multitrack.rendering.containers) return;
+
+    multitrack.tracks.forEach((track, index) => {
+        if (track.id === 'start-track') return;
+
+        const container = multitrack.rendering.containers[index];
+        if (!container) return;
+
+        // Verificar si ya tiene controles para no duplicar
+        if (container.querySelector('.track-controls')) return;
+
+        // Crear panel de controles
+        const controls = document.createElement('div');
+        controls.className = 'track-controls';
+        controls.innerHTML = `
+            <div class="d-flex align-items-center mb-1">
+                <span class="track-name text-truncate small me-auto" style="max-width: 80px;" title="${track._name || 'Clip'}">${track._name || 'Clip'}</span>
+                <button class="btn btn-xs btn-outline-secondary btn-mute me-1 ${track.muted ? 'active' : ''}" title="Mute">M</button>
+                <button class="btn btn-xs btn-outline-secondary btn-solo ${track.solo ? 'active' : ''}" title="Solo">S</button>
+            </div>
+            <div class="d-flex align-items-center">
+                <i class="fa-solid fa-volume-low small me-1 text-muted"></i>
+                <input type="range" class="form-range track-volume" min="0" max="1" step="0.05" value="${track.volume ?? 1}">
+            </div>
+        `;
+
+        // Estilos inline para asegurar visibilidad sobre el canvas
+        Object.assign(controls.style, {
+            position: 'absolute',
+            left: '10px',
+            top: '10px',
+            zIndex: '100',
+            background: 'rgba(0,0,0,0.8)',
+            backdropFilter: 'blur(4px)',
+            padding: '8px',
+            borderRadius: '6px',
+            width: '160px',
+            border: '1px solid rgba(255,255,255,0.1)'
+        });
+
+        // Event Listeners
+        const btnMute = controls.querySelector('.btn-mute');
+        const btnSolo = controls.querySelector('.btn-solo');
+        const inputVol = controls.querySelector('.track-volume');
+
+        btnMute.addEventListener('click', (e) => {
+            e.stopPropagation(); // Evitar drag
+            track.muted = !track.muted;
+            // Actualizar estado visual
+            btnMute.classList.toggle('active', track.muted);
+            btnMute.classList.toggle('btn-danger', track.muted);
+            btnMute.classList.toggle('btn-outline-secondary', !track.muted);
+            // Aplicar al audio real
+            if (multitrack.audios[index]) multitrack.audios[index].muted = track.muted;
+        });
+
+        btnSolo.addEventListener('click', (e) => {
+            e.stopPropagation();
+            track.solo = !track.solo;
+            btnSolo.classList.toggle('active', track.solo);
+            btnSolo.classList.toggle('btn-warning', track.solo);
+            btnSolo.classList.toggle('btn-outline-secondary', !track.solo);
+            
+            // Lógica de Solo: Mutear todos los demás
+            const hasSolo = tracks.some(t => t.solo);
+            multitrack.tracks.forEach((t, i) => {
+                if (t.id === 'start-track') return;
+                const audio = multitrack.audios[i];
+                if (!audio) return;
+                
+                if (hasSolo) {
+                    // Si hay algún solo activo, mutear los que no son solo
+                    audio.muted = !t.solo;
+                } else {
+                    // Si no hay solos, restaurar estado mute original
+                    audio.muted = t.muted || false;
+                }
+            });
+        });
+
+        inputVol.addEventListener('input', (e) => {
+            e.stopPropagation();
+            const vol = parseFloat(e.target.value);
+            track.volume = vol;
+            if (multitrack.audios[index]) multitrack.audios[index].volume = vol;
+        });
+        
+        // Prevenir que el drag del slider mueva la pista
+        inputVol.addEventListener('mousedown', e => e.stopPropagation());
+        controls.addEventListener('mousedown', e => e.stopPropagation());
+
+        container.appendChild(controls);
+    });
 }
 
 /**
@@ -153,11 +256,57 @@ async function exportMix() {
 
       // 2. Offline Rendering
       const offlineCtx = new OfflineAudioContext(2, maxDuration * 44100, 44100);
+      const hasSolo = tracks.some(t => t.solo);
       
+      sources.forEach((src, idx) => {
+          // Lógica de Mute/Solo
+          const track = tracks.find(t => t.startPosition === src.startTime && t.url); // Búsqueda aproximada
+          // Mejor usar el índice si es paralelo, pero sources se llenó en bucle
+          // Vamos a re-implementar el loop de sources para incluir metadatos de volumen/mute
+      });
+      
+      // Reiniciamos sources con lógica correcta
+      sources.length = 0; // Limpiar
+      
+      for (let i = 0; i < tracks.length; i++) {
+          const track = tracks[i];
+          if (track.id === 'start-track') continue;
+          
+          // Verificar si debe sonar
+          const shouldPlay = hasSolo ? track.solo : !track.muted;
+          if (!shouldPlay) continue;
+
+          const response = await fetch(track.url);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          
+          sources.push({
+              buffer: audioBuffer,
+              startTime: track.startPosition || 0,
+              volume: track.volume ?? 1
+          });
+          
+          const trackEnd = (track.startPosition || 0) + audioBuffer.duration;
+          if (trackEnd > maxDuration) maxDuration = trackEnd;
+      }
+      
+      // Si todo está muteado
+      if (sources.length === 0) {
+          window.toast?.warning('No hay pistas activas para exportar (todo muteado)');
+          return;
+      }
+
       sources.forEach(src => {
           const source = offlineCtx.createBufferSource();
           source.buffer = src.buffer;
-          source.connect(offlineCtx.destination);
+          
+          // Gain Node para volumen
+          const gainNode = offlineCtx.createGain();
+          gainNode.gain.value = src.volume;
+          
+          source.connect(gainNode);
+          gainNode.connect(offlineCtx.destination);
+          
           source.start(src.startTime);
       });
 
