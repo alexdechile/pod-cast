@@ -64,6 +64,7 @@ function setupDAWControls() {
   const btnPlay = document.getElementById('daw-btn-play');
   const btnStop = document.getElementById('daw-btn-stop');
   const zoomSlider = document.getElementById('daw-zoom-slider');
+  const btnExport = document.getElementById('daw-btn-export'); // Referencia al botón exportar
 
   // Remover listeners antiguos para no duplicar (clonando nodo)
   const newBtnPlay = btnPlay?.cloneNode(true);
@@ -71,6 +72,9 @@ function setupDAWControls() {
   
   const newBtnStop = btnStop?.cloneNode(true);
   if(btnStop) btnStop.parentNode.replaceChild(newBtnStop, btnStop);
+
+  const newBtnExport = btnExport?.cloneNode(true); // Clonar botón exportar
+  if(btnExport) btnExport.parentNode.replaceChild(newBtnExport, btnExport);
 
   newBtnPlay?.addEventListener('click', () => {
     if (!multitrack) return;
@@ -94,7 +98,151 @@ function setupDAWControls() {
     const val = parseInt(e.target.value);
     if(multitrack) multitrack.setZoom(val);
   });
+
+  newBtnExport?.addEventListener('click', exportMix); // Listener para exportar
 }
+
+/**
+ * Exportar mezcla final
+ */
+async function exportMix() {
+  if (!multitrack || tracks.length <= 1) { // <= 1 porque start-track es fantasma
+      window.toast?.warning('No hay pistas para exportar');
+      return;
+  }
+
+  window.toast?.info('⏳ Renderizando mezcla...');
+  console.log('⏳ Iniciando exportación...');
+
+  try {
+      // 1. Calcular duración total
+      let maxDuration = 0;
+      // Usar la instancia multitrack para obtener duraciones reales decodificadas
+      // multitrack.wavesurfers es un array interno de instancias wavesurfer por pista
+      const wavesurfers = multitrack.wavesurfers; 
+      
+      // Necesitamos mapear tracks lógicos a wavesurfers físicos
+      // Asumiremos que el orden se mantiene, pero es arriesgado. 
+      // Mejor: iterar sobre tracks y buscar su audio decodificado.
+      
+      // Estrategia más segura con la API pública de Multitrack (si existe) o iterando sources
+      // Dado que multitrack v7 beta es limitado, usaremos Web Audio API nativa recomponiendo
+      
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const sources = [];
+      
+      // Recorrer pistas (saltando la primera 'start-track' si es fantasma/vacía)
+      for (let i = 0; i < tracks.length; i++) {
+          const track = tracks[i];
+          if (track.id === 'start-track') continue;
+          
+          const response = await fetch(track.url);
+          const arrayBuffer = await response.arrayBuffer();
+          const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          
+          sources.push({
+              buffer: audioBuffer,
+              startTime: track.startPosition || 0
+          });
+          
+          const trackEnd = (track.startPosition || 0) + audioBuffer.duration;
+          if (trackEnd > maxDuration) maxDuration = trackEnd;
+      }
+
+      if (maxDuration === 0) throw new Error("Duración total es 0");
+
+      // 2. Offline Rendering
+      const offlineCtx = new OfflineAudioContext(2, maxDuration * 44100, 44100);
+      
+      sources.forEach(src => {
+          const source = offlineCtx.createBufferSource();
+          source.buffer = src.buffer;
+          source.connect(offlineCtx.destination);
+          source.start(src.startTime);
+      });
+
+      const renderedBuffer = await offlineCtx.startRendering();
+      
+      // 3. Convertir a WAV y Descargar
+      const wavBlob = bufferToWav(renderedBuffer);
+      const url = URL.createObjectURL(wavBlob);
+      
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `podcast_mix_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.wav`;
+      document.body.appendChild(a);
+      a.click();
+      window.setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+      }, 100);
+
+      window.toast?.success('✅ Exportación completada');
+      console.log('✅ Exportación exitosa');
+
+  } catch (err) {
+      console.error('❌ Error exportando:', err);
+      window.toast?.error('Error al exportar audio');
+  }
+}
+
+// Utilidad simple para WAV (PCM 16-bit)
+function bufferToWav(abuffer) {
+  const numOfChan = abuffer.numberOfChannels;
+  const length = abuffer.length * numOfChan * 2 + 44;
+  const buffer = new ArrayBuffer(length);
+  const view = new DataView(buffer);
+  const channels = [];
+  let i;
+  let sample;
+  let offset = 0;
+  let pos = 0;
+
+  // write WAVE header
+  setUint32(0x46464952); // "RIFF"
+  setUint32(length - 8); // file length - 8
+  setUint32(0x45564157); // "WAVE"
+
+  setUint32(0x20746d66); // "fmt " chunk
+  setUint32(16); // length = 16
+  setUint16(1); // PCM (uncompressed)
+  setUint16(numOfChan);
+  setUint32(abuffer.sampleRate);
+  setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+  setUint16(numOfChan * 2); // block-align
+  setUint16(16); // 16-bit (hardcoded in this demo)
+
+  setUint32(0x61746164); // "data" - chunk
+  setUint32(length - pos - 4); // chunk length
+
+  // write interleaved data
+  for (i = 0; i < abuffer.numberOfChannels; i++)
+    channels.push(abuffer.getChannelData(i));
+
+  while (pos < abuffer.length) {
+    for (i = 0; i < numOfChan; i++) { // interleave channels
+      sample = Math.max(-1, Math.min(1, channels[i][pos])); // clamp
+      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; // scale to 16-bit signed int
+      view.setInt16(44 + offset, sample, true); // write 16-bit sample
+      offset += 2;
+    }
+    pos++;
+  }
+
+  return new Blob([buffer], { type: "audio/wav" });
+
+  function setUint16(data) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  function setUint32(data) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+}
+
 
 /**
  * Función principal para añadir clips al timeline
