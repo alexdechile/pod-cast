@@ -4,33 +4,36 @@
  */
 
 let multitrack = null;
-let trackCount = 0; // Contador para IDs únicos de pistas
+let trackCount = 0; 
+let tracks = [
+  { id: 'start-track', draggable: false } // Pista inicial por defecto
+];
 
 function initDAW() {
   const container = document.getElementById('multitrack-container');
   if (!container) return;
 
-  // Detectar la clase Multitrack (Global o bajo WaveSurfer)
+  // Detectar la clase Multitrack
   const MultitrackClass = window.Multitrack || (window.WaveSurfer && window.WaveSurfer.Multitrack);
   
   if (!MultitrackClass) {
-    console.error('❌ Plugin Multitrack no encontrado. Verifica los scripts en index.html');
-    window.toast?.error('Error: Motor de audio no cargado');
+    console.error('❌ Plugin Multitrack no encontrado.');
     return;
   }
 
-  // Destruir instancia previa si existe
+  // Destruir instancia previa para recargar
   if (multitrack) {
       try {
           multitrack.destroy();
-      } catch(e) { console.warn('Error destruyendo instancia previa:', e); }
+          multitrack = null;
+          // Limpiar contenedor por si acaso
+          container.innerHTML = '';
+      } catch(e) { console.warn('Error limpiando DAW:', e); }
   }
 
-  // Configuración inicial con pistas vacías
+  // Configuración inicial
   try {
-      multitrack = MultitrackClass.create([
-          { id: 'start-track', draggable: false } // Pista fantasma inicial para establecer el timeline
-      ], {
+      multitrack = MultitrackClass.create(tracks, {
         container,
         minPxPerSec: 10,
         rightButtonDrag: false,
@@ -41,13 +44,11 @@ function initDAW() {
         dragBounds: true,
       });
 
-      console.log('✅ DAW Multitrack inicializado');
-      window.toast?.info('DAW Listo: Arrastra audios aquí');
+      console.log('✅ DAW Multitrack renderizado con', tracks.length, 'pistas');
       
       setupDAWControls();
       setupDAWDragAndDrop();
       
-      // Eventos
       multitrack.on('timeupdate', (time) => updateDAWTime(time));
       
   } catch (err) {
@@ -64,25 +65,31 @@ function setupDAWControls() {
   const btnStop = document.getElementById('daw-btn-stop');
   const zoomSlider = document.getElementById('daw-zoom-slider');
 
-  btnPlay?.addEventListener('click', () => {
+  // Remover listeners antiguos para no duplicar (clonando nodo)
+  const newBtnPlay = btnPlay?.cloneNode(true);
+  if(btnPlay) btnPlay.parentNode.replaceChild(newBtnPlay, btnPlay);
+  
+  const newBtnStop = btnStop?.cloneNode(true);
+  if(btnStop) btnStop.parentNode.replaceChild(newBtnStop, btnStop);
+
+  newBtnPlay?.addEventListener('click', () => {
     if (!multitrack) return;
     if (multitrack.isPlaying()) {
       multitrack.pause();
-      btnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
+      newBtnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
     } else {
       multitrack.play();
-      btnPlay.innerHTML = '<i class="fa-solid fa-pause"></i>';
+      newBtnPlay.innerHTML = '<i class="fa-solid fa-pause"></i>';
     }
   });
 
-  btnStop?.addEventListener('click', () => {
+  newBtnStop?.addEventListener('click', () => {
     if (!multitrack) return;
     multitrack.stop();
     multitrack.setTime(0);
-    btnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
+    newBtnPlay.innerHTML = '<i class="fa-solid fa-play"></i>';
   });
   
-  // ... resto de controles de zoom ...
   zoomSlider?.addEventListener('input', (e) => {
     const val = parseInt(e.target.value);
     if(multitrack) multitrack.setZoom(val);
@@ -93,21 +100,13 @@ function setupDAWControls() {
  * Función principal para añadir clips al timeline
  */
 async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null) {
-  if (!multitrack) {
-      console.error('❌ Multitrack no inicializado');
-      return;
-  }
-  
   console.log(`📥 Añadiendo audio: ${name}`);
 
   const url = typeof blobOrUrl === 'string' ? blobOrUrl : URL.createObjectURL(blobOrUrl);
-  
-  // Crear un nuevo ID de pista único
   const newTrackId = trackId || `track-${Date.now()}-${trackCount++}`;
   
-  try {
-    // En v7 Multitrack, addTrack espera un objeto de pista
-    multitrack.addTrack({
+  // 1. Agregar a nuestro estado global de pistas
+  tracks.push({
       id: newTrackId,
       url: url,
       startPosition: 0,
@@ -115,24 +114,17 @@ async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null) {
       options: {
         waveColor: '#00c3ff',
         progressColor: '#0077aa'
-      }
-    });
-    
-    window.toast?.success(`Pista añadida: ${name}`);
-    console.log('✅ Pista añadida correctamente');
+      },
+      // Metadatos extra para nosotros
+      _name: name 
+  });
 
-  } catch (err) {
-    console.error('❌ Error API addTrack:', err);
-    
-    // Fallback: Intentar método alternativo si la API cambió
-    try {
-        // A veces es multitrack.tracks.push... (depende de la versión exacta del plugin beta)
-        // Pero intentemos reimplementar la lista completa si falla agregar uno solo (hack)
-        console.log('⚠️ Intentando método alternativo...');
-    } catch (e2) {
-        window.toast?.error('No se pudo añadir el audio. Revisa la consola.');
-    }
-  }
+  // 2. Re-renderizar todo el DAW
+  // Esta versión de Multitrack no soporta addTrack dinámico real, 
+  // así que recreamos la instancia preservando el estado.
+  initDAW();
+  
+  window.toast?.success(`Pista añadida: ${name}`);
 }
 
 function setupDAWDragAndDrop() {
