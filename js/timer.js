@@ -101,6 +101,13 @@ class RecordingTimer {
         if (!this.startTime) return 0;
         return Date.now() - this.startTime;
     }
+
+    getTimeString() {
+        const elapsed = this.startTime ? Date.now() - this.startTime : this.pausedTime || 0;
+        const minutes = Math.floor(elapsed / 60000);
+        const seconds = Math.floor((elapsed % 60000) / 1000);
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
 }
 
 // Crear instancia global

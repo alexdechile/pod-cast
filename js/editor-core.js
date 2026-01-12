@@ -6,7 +6,7 @@
 
 // --- Constants ---
 // Utiliza AppConfig si está disponible, sino fallback a defaults
-const CONFIG = window.AppConfig || { 
+const CORE_CONFIG = window.AppConfig || { 
     AUDIO: { SAMPLE_RATE: 44100, DEFAULT_DURATION: 60, TIMELINE_PADDING: 10 },
     EDITOR: { CLIP_DEFAULT_COLOR: '#00c3ff' }
 };
@@ -32,7 +32,7 @@ class Clip {
         ];
 
         // Visual properties
-        this.color = CONFIG.EDITOR.CLIP_DEFAULT_COLOR;
+        this.color = CORE_CONFIG.EDITOR.CLIP_DEFAULT_COLOR;
         this.selected = false;
         this.layer = 0; // For multi-track support eventually
     }
@@ -65,7 +65,7 @@ class EditorProject {
     constructor() {
         this.clips = []; // Array of Clip objects
         this.playhead = 0; // Current global time in seconds
-        this.duration = CONFIG.AUDIO.DEFAULT_DURATION; // Total timeline duration in seconds (expandable)
+        this.duration = CORE_CONFIG.AUDIO.DEFAULT_DURATION; // Total timeline duration in seconds (expandable)
         this.isPlaying = false;
 
         // Buffers cache: key -> AudioBuffer
