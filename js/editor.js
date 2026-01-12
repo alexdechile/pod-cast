@@ -566,6 +566,12 @@ async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null, segments 
     return 0;
   };
 
+  // LIMPIEZA: Si la única pista existente es la 'start-track' (placeholder), la eliminamos
+  // para que las nuevas pistas empiecen desde arriba.
+  if (tracks.length === 1 && tracks[0].id === 'start-track') {
+      tracks = [];
+  }
+
   if (segments && segments.length > 0) {
       // --- MODO MULTI-CLIP (Smart Split) ---
       console.log('✂️ Aplicando Smart Split...');
