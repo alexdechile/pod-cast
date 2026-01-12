@@ -58,19 +58,19 @@ function saveRecording(blob, name) {
 			const now = new Date();
 			const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
 
-			console.log('💾 Guardando en IndexedDB con nombre:', defaultName);
-			// Guardar con metadata
-			const req = store.add({
-				name: defaultName,
-				date: now,
-				blob,
-				duration: duration,
-				size: blob.size,
-				format: blob.type
-			});
-
-			tx.oncomplete = () => {
-				console.log('✅ Transacción DB completada exitosamente');
+			            console.log('💾 Guardando en IndexedDB con nombre:', defaultName);
+						// Guardar con metadata
+						const req = store.add({
+							name: defaultName,
+							date: now,
+							blob,
+							duration: duration,
+							size: blob.size,
+							format: blob.type,
+							segments: [...recordingSegments]
+						});
+			
+						tx.oncomplete = () => {				console.log('✅ Transacción DB completada exitosamente');
 				console.log('🔄 Llamando a loadPlaylist()...');
 				loadPlaylist();
 
@@ -198,6 +198,19 @@ function loadPlaylist() {
 						<span><i class="fa-solid fa-database" style="color: #fffc00;"></i> ${sizeStr}</span>
 						<span><i class="fa-solid fa-calendar" style="color: #ff9900;"></i> ${dateStr}</span>
 					</div>
+					${rec.segments && rec.segments.length > 0 ? `
+						<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1);">
+							<small style="color: #aaa; font-size: 10px; text-transform: uppercase;">Secciones:</small>
+							<ul style="list-style: none; padding: 0; margin: 4px 0 0 0; font-size: 11px; color: #ccc;">
+								${rec.segments.map(seg => `
+									<li style="margin-bottom: 2px;">
+										<i class="fa-solid fa-tag fa-xs" style="color: #00c3ff; margin-right: 4px;"></i>
+										<span style="color: #fff; font-weight: bold;">${seg.time}</span> - ${seg.name}
+									</li>
+								`).join('')}
+							</ul>
+						</div>
+					` : ''}
 				</div>
 			`;
 			// Renombrar
