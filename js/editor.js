@@ -81,34 +81,61 @@ function renderTrackControls() {
         controls.className = 'track-controls';
         controls.innerHTML = `
             <div class="d-flex align-items-center mb-1">
-                <span class="track-name text-truncate small me-auto" style="max-width: 80px;" title="${track._name || 'Clip'}">${track._name || 'Clip'}</span>
-                <button class="btn btn-xs btn-outline-secondary btn-mute me-1 ${track.muted ? 'active' : ''}" title="Mute">M</button>
-                <button class="btn btn-xs btn-outline-secondary btn-solo ${track.solo ? 'active' : ''}" title="Solo">S</button>
+                <span class="track-name text-truncate small me-auto" style="max-width: 65px; font-size: 10px;" title="${track._name || 'Clip'}">${track._name || 'Clip'}</span>
+                <button class="btn btn-xs btn-outline-secondary btn-mute me-1 ${track.muted ? 'active' : ''}" title="Mute" style="padding: 0 4px; font-size: 10px;">M</button>
+                <button class="btn btn-xs btn-outline-secondary btn-solo me-1 ${track.solo ? 'active' : ''}" title="Solo" style="padding: 0 4px; font-size: 10px;">S</button>
+                <button class="btn btn-xs btn-outline-danger btn-delete" title="Eliminar Pista" style="padding: 0 4px; font-size: 10px;"><i class="fa-solid fa-trash"></i></button>
             </div>
             <div class="d-flex align-items-center">
-                <i class="fa-solid fa-volume-low small me-1 text-muted"></i>
-                <input type="range" class="form-range track-volume" min="0" max="1" step="0.05" value="${track.volume ?? 1}">
+                <i class="fa-solid fa-volume-low small me-1 text-muted" style="font-size: 10px;"></i>
+                <input type="range" class="form-range track-volume" min="0" max="1" step="0.05" value="${track.volume ?? 1}" style="height: 4px;">
             </div>
         `;
 
         // Estilos inline para asegurar visibilidad sobre el canvas
         Object.assign(controls.style, {
             position: 'absolute',
-            left: '10px',
-            top: '10px',
+            left: '4px', // Más a la izquierda
+            top: '4px',  // Más arriba
             zIndex: '100',
-            background: 'rgba(0,0,0,0.8)',
+            background: 'rgba(20, 20, 20, 0.85)', // Fondo un poco más oscuro
             backdropFilter: 'blur(4px)',
-            padding: '8px',
-            borderRadius: '6px',
-            width: '160px',
-            border: '1px solid rgba(255,255,255,0.1)'
+            padding: '4px 6px', // Padding reducido
+            borderRadius: '4px',
+            width: '150px', // Un poco más estrecho
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
         });
 
         // Event Listeners
         const btnMute = controls.querySelector('.btn-mute');
         const btnSolo = controls.querySelector('.btn-solo');
+        const btnDelete = controls.querySelector('.btn-delete');
         const inputVol = controls.querySelector('.track-volume');
+
+        // --- Lógica Eliminar ---
+        btnDelete.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const confirmed = await window.confirm.show({
+                title: '¿Eliminar pista?',
+                message: `¿Borrar "${track._name}" del editor?`,
+                confirmText: 'Borrar',
+                cancelText: 'Cancelar',
+                type: 'danger',
+                icon: 'fa-trash'
+            });
+            
+            if (confirmed) {
+                // Eliminar del array global de tracks
+                const trackIdx = tracks.findIndex(t => t.id === track.id);
+                if (trackIdx !== -1) {
+                    tracks.splice(trackIdx, 1);
+                    // Re-renderizar
+                    initDAW();
+                    window.toast?.info('Pista eliminada');
+                }
+            }
+        });
 
         btnMute.addEventListener('click', (e) => {
             e.stopPropagation(); // Evitar drag
