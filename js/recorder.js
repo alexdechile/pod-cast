@@ -612,68 +612,134 @@ window.UI.recorder.inputVolume?.addEventListener('input', () => {
 	volInput.style.background = `linear-gradient(90deg,#00c3ff ${(volInput.value * 100)}%,#232526 ${(volInput.value * 100)}%)`;
 });
 
+// Helper para convertir "MM:SS" a segundos
+function timeToSeconds(timeStr) {
+	if (!timeStr) return 0;
+	const parts = timeStr.split(':');
+	let seconds = 0;
+	if (parts.length === 2) {
+		seconds = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+	} else if (parts.length === 3) {
+		seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+	}
+	return seconds;
+}
+
 /**
- * Agrega una grabación al editor como un nuevo clip
- * Esta función permite composición multi-clip en el editor
+ * Agrega una grabación al editor como un nuevo clip (o múltiples clips si hay segmentos)
  */
 async function addRecordingToEditor(recordingRecord) {
-if (!window.audioEngine || !window.editorProject) {
-window.toast?.error("Error: Motor de audio no inicializado");
-console.error("AudioEngine or EditorProject not initialized");
-return;
-}
+	if (!window.audioEngine || !window.editorProject) {
+		window.toast?.error("Error: Motor de audio no inicializado");
+		console.error("AudioEngine or EditorProject not initialized");
+		return;
+	}
 
-const toastId = window.toast?.info(`Agregando "${recordingRecord.name}" al editor...`, 0);
+	const toastId = window.toast?.info(`Procesando "${recordingRecord.name}"...`, 0);
 
-try {
-console.log("✅ Adding to editor:", recordingRecord.name);
+	try {
+		console.log("✅ Adding to editor:", recordingRecord.name);
 
-if (window.audioEngine.ac.state === 'suspended') {
-await window.audioEngine.ac.resume();
-}
+		if (window.audioEngine.ac.state === 'suspended') {
+			await window.audioEngine.ac.resume();
+		}
 
-// Decode audio data
-const arrayBuffer = await recordingRecord.blob.arrayBuffer();
-if (arrayBuffer.byteLength === 0) {
-throw new Error("El archivo de audio está vacío.");
-}
+		// 1. Decode audio data (Shared Buffer)
+		const arrayBuffer = await recordingRecord.blob.arrayBuffer();
+		if (arrayBuffer.byteLength === 0) {
+			throw new Error("El archivo de audio está vacío.");
+		}
 
-const audioBuffer = await window.audioEngine.decodeAudioData(arrayBuffer);
-console.log("  Audio decoded. Duration:", audioBuffer.duration.toFixed(2), "s");
+		const audioBuffer = await window.audioEngine.decodeAudioData(arrayBuffer);
+		console.log("  Audio decoded. Duration:", audioBuffer.duration.toFixed(2), "s");
 
-// Create unique clip ID
-const clipId = `clip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		// Identificador único para la fuente de audio (Buffer)
+		const sourceId = `source_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		// Guardar buffer en caché del proyecto
+		window.editorProject.buffers.set(sourceId, audioBuffer);
 
-// Store buffer in project cache
-window.editorProject.buffers.set(clipId, audioBuffer);
+		// 2. Determinar punto de inserción en el timeline (después del último clip)
+		let insertionTime = window.editorProject.clips.reduce(
+			(max, c) => Math.max(max, c.startTime + c.duration),
+			0
+		);
+		// Añadir un pequeño margen si no es el principio
+		if (insertionTime > 0) insertionTime += 0.5;
 
-// Create new clip
-const newClip = new window.EditorCore.Clip(clipId, clipId, audioBuffer.duration);
-newClip.name = recordingRecord.name;
+		// 3. Crear Clips (Uno o Múltiples)
+		let clipsCreated = 0;
 
-// Calculate start time (place after last clip)
-const lastClipEnd = window.editorProject.clips.reduce(
-(max, c) => Math.max(max, c.startTime + c.duration), 
-0
-);
-newClip.startTime = lastClipEnd;
+		if (recordingRecord.segments && recordingRecord.segments.length > 0) {
+			// --- Lógica Multi-Clip (Basada en Segmentos) ---
+			console.log("✂️ Segmentos detectados. Creando clips individuales...");
+			
+			let prevTimeInSource = 0;
 
-// Add clip WITHOUT clearing existing clips (multi-clip editing)
-window.editorProject.addClip(newClip);
+			// Ordenar segmentos por tiempo para asegurar secuencia
+			const sortedSegments = [...recordingRecord.segments].sort((a, b) => 
+				timeToSeconds(a.time) - timeToSeconds(b.time)
+			);
 
-console.log(`  ✅ Clip added at ${lastClipEnd.toFixed(2)}s. Total clips:`, window.editorProject.clips.length);
+			for (const seg of sortedSegments) {
+				const segendTime = timeToSeconds(seg.time);
+				const duration = segendTime - prevTimeInSource;
 
-// Re-render timeline
-if (typeof renderTimeline === 'function') {
-renderTimeline();
-} else {
-console.warn('⚠️ renderTimeline() not available');
-}
+				if (duration > 0.1) { // Ignorar segmentos muy cortos (< 100ms)
+					const clipId = `clip_${Date.now()}_${clipsCreated}_${Math.random().toString(36).substr(2, 5)}`;
+					const newClip = new window.EditorCore.Clip(clipId, sourceId, duration);
+					
+					newClip.name = seg.name;
+					newClip.startTime = insertionTime; // Dónde empieza en el timeline global
+					newClip.startOffset = prevTimeInSource; // Dónde empieza dentro del archivo de audio original
+					
+					window.editorProject.addClip(newClip);
+					
+					insertionTime += duration; // Avanzar cursor de inserción
+					prevTimeInSource = segendTime; // Actualizar punto de lectura
+					clipsCreated++;
+				}
+			}
 
-window.toast?.success(`"${recordingRecord.name}" agregado al editor`);
+			// --- Clip Final (Cola) ---
+			// Si queda audio después del último segmento, agregarlo como "Resto" o "Final"
+			if (audioBuffer.duration > prevTimeInSource + 0.5) {
+				const finalDuration = audioBuffer.duration - prevTimeInSource;
+				const clipId = `clip_${Date.now()}_tail_${Math.random().toString(36).substr(2, 5)}`;
+				const finalClip = new window.EditorCore.Clip(clipId, sourceId, finalDuration);
+				
+				finalClip.name = `${recordingRecord.name} (Final)`;
+				finalClip.startTime = insertionTime;
+				finalClip.startOffset = prevTimeInSource;
+				
+				window.editorProject.addClip(finalClip);
+				clipsCreated++;
+			}
 
-} catch (e) {
-console.error("❌ Add to editor failed:", e);
-window.toast?.error("Error al agregar: " + e.message);
-}
+			window.toast?.success(`Importado: ${clipsCreated} secciones creadas`);
+
+		} else {
+			// --- Lógica Clásica (Un solo Clip) ---
+			const clipId = `clip_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+			const newClip = new window.EditorCore.Clip(clipId, sourceId, audioBuffer.duration);
+			newClip.name = recordingRecord.name;
+			newClip.startTime = insertionTime;
+			newClip.startOffset = 0;
+
+			window.editorProject.addClip(newClip);
+			window.toast?.success(`"${recordingRecord.name}" agregado al editor`);
+		}
+
+		console.log(`  ✅ Proceso completado. Total clips en proyecto:`, window.editorProject.clips.length);
+
+		// Re-render timeline
+		if (typeof renderTimeline === 'function') {
+			renderTimeline();
+		} else {
+			console.warn('⚠️ renderTimeline() not available');
+		}
+
+	} catch (e) {
+		console.error("❌ Add to editor failed:", e);
+		window.toast?.error("Error al agregar: " + e.message);
+	}
 }
