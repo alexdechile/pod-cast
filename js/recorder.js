@@ -13,7 +13,7 @@ const REC_CONFIG = window.AppConfig || {
 		} 
 	}
 };
-const DB_AUDIO = REC_REC_CONFIG.DB.NAME;
+const DB_AUDIO = REC_CONFIG.DB.NAME;
 window.dbAudio = null;
 let audioContext = null, analyser = null, dataArray = null, animationId = null;
 
@@ -22,8 +22,8 @@ function initAudioDB() {
 	const request = indexedDB.open(DB_AUDIO, 1);
 	request.onupgradeneeded = function (e) {
 		const db = e.target.result;
-		if (!db.objectStoreNames.contains(REC_REC_CONFIG.DB.STORE_RECORDINGS)) {
-			db.createObjectStore(REC_REC_CONFIG.DB.STORE_RECORDINGS, { keyPath: 'id', autoIncrement: true });
+		if (!db.objectStoreNames.contains(REC_CONFIG.DB.STORE_RECORDINGS)) {
+			db.createObjectStore(REC_CONFIG.DB.STORE_RECORDINGS, { keyPath: 'id', autoIncrement: true });
 		}
 	};
 	request.onsuccess = function (e) {
@@ -53,8 +53,8 @@ function saveRecording(blob, name) {
 			const duration = await Promise.race([durationPromise, timeoutPromise]);
 			console.log('⏱️ Duración obtenida:', duration, 'segundos');
 
-			const tx = window.dbAudio.transaction([REC_REC_CONFIG.DB.STORE_RECORDINGS], 'readwrite');
-			const store = tx.objectStore(REC_REC_CONFIG.DB.STORE_RECORDINGS);
+			const tx = window.dbAudio.transaction([REC_CONFIG.DB.STORE_RECORDINGS], 'readwrite');
+			const store = tx.objectStore(REC_CONFIG.DB.STORE_RECORDINGS);
 			const now = new Date();
 			const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
 
@@ -108,8 +108,8 @@ function getAudioDuration(blob) {
 
 function loadPlaylist() {
 	if (!window.dbAudio) return;
-	const tx = window.dbAudio.transaction([REC_REC_CONFIG.DB.STORE_RECORDINGS], 'readonly');
-	const store = tx.objectStore(REC_REC_CONFIG.DB.STORE_RECORDINGS);
+	const tx = window.dbAudio.transaction([REC_CONFIG.DB.STORE_RECORDINGS], 'readonly');
+	const store = tx.objectStore(REC_CONFIG.DB.STORE_RECORDINGS);
 	const req = store.getAll();
 	req.onsuccess = function (e) {
 		const recs = e.target.result;
