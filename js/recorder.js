@@ -1,6 +1,19 @@
 let mediaRecorder, audioChunks = [], audioStream = null, isRecording = false, isPaused = false, wavesurfer = null;
 let recordingSegments = [];
-const DB_AUDIO = 'pod-cast';
+// Usar Config o defaults
+const CONFIG = window.AppConfig || {
+	DB: { NAME: 'pod-cast', STORE_RECORDINGS: 'recordings' },
+	UI: { 
+		WAVESURFER: { 
+			waveColor: '#00c3ff', 
+			progressColor: '#fffc00', 
+			backgroundColor: '#18191a',
+			height: 60,
+			cursorColor: '#ff0066'
+		} 
+	}
+};
+const DB_AUDIO = CONFIG.DB.NAME;
 window.dbAudio = null;
 let audioContext = null, analyser = null, dataArray = null, animationId = null;
 
@@ -9,8 +22,8 @@ function initAudioDB() {
 	const request = indexedDB.open(DB_AUDIO, 1);
 	request.onupgradeneeded = function (e) {
 		const db = e.target.result;
-		if (!db.objectStoreNames.contains('recordings')) {
-			db.createObjectStore('recordings', { keyPath: 'id', autoIncrement: true });
+		if (!db.objectStoreNames.contains(CONFIG.DB.STORE_RECORDINGS)) {
+			db.createObjectStore(CONFIG.DB.STORE_RECORDINGS, { keyPath: 'id', autoIncrement: true });
 		}
 	};
 	request.onsuccess = function (e) {
@@ -40,8 +53,8 @@ function saveRecording(blob, name) {
 			const duration = await Promise.race([durationPromise, timeoutPromise]);
 			console.log('⏱️ Duración obtenida:', duration, 'segundos');
 
-			const tx = window.dbAudio.transaction(['recordings'], 'readwrite');
-			const store = tx.objectStore('recordings');
+			const tx = window.dbAudio.transaction([CONFIG.DB.STORE_RECORDINGS], 'readwrite');
+			const store = tx.objectStore(CONFIG.DB.STORE_RECORDINGS);
 			const now = new Date();
 			const defaultName = name || now.toISOString().replace(/[:.]/g, '-');
 
@@ -95,8 +108,8 @@ function getAudioDuration(blob) {
 
 function loadPlaylist() {
 	if (!window.dbAudio) return;
-	const tx = window.dbAudio.transaction(['recordings'], 'readonly');
-	const store = tx.objectStore('recordings');
+	const tx = window.dbAudio.transaction([CONFIG.DB.STORE_RECORDINGS], 'readonly');
+	const store = tx.objectStore(CONFIG.DB.STORE_RECORDINGS);
 	const req = store.getAll();
 	req.onsuccess = function (e) {
 		const recs = e.target.result;
@@ -190,8 +203,8 @@ function loadPlaylist() {
 			// Renombrar
 			li.querySelector('.rename-input').addEventListener('change', function () {
 				const newName = this.value;
-				const tx2 = window.dbAudio.transaction(['recordings'], 'readwrite');
-				const store2 = tx2.objectStore('recordings');
+				const tx2 = window.dbAudio.transaction([CONFIG.DB.STORE_RECORDINGS], 'readwrite');
+				const store2 = tx2.objectStore(CONFIG.DB.STORE_RECORDINGS);
 				store2.get(rec.id).onsuccess = function (ev) {
 					const data = ev.target.result;
 					data.name = newName;
@@ -214,8 +227,8 @@ function loadPlaylist() {
 				});
 				if (confirmed) {
 					try {
-						const tx2 = window.dbAudio.transaction(['recordings'], 'readwrite');
-						const store2 = tx2.objectStore('recordings');
+						const tx2 = window.dbAudio.transaction([CONFIG.DB.STORE_RECORDINGS], 'readwrite');
+						const store2 = tx2.objectStore(CONFIG.DB.STORE_RECORDINGS);
 						store2.delete(rec.id);
 						tx2.oncomplete = () => {
 							loadPlaylist();
@@ -234,14 +247,7 @@ function loadPlaylist() {
 					if (!wavesurfer) {
 						wavesurfer = WaveSurfer.create({
 							container: window.UI.recorder.waveformDiv,
-							waveColor: '#00c3ff',
-							progressColor: '#fffc00',
-							backgroundColor: '#18191a',
-							height: 60,
-							barWidth: 2,
-							barGap: 1,
-							barRadius: 2,
-							cursorColor: '#ff0066',
+							...CONFIG.UI.WAVESURFER
 						});
 					}
 					wavesurfer.loadBlob(rec.blob);

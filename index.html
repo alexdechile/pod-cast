@@ -121,71 +121,24 @@
   <div class="modal fade" id="permissionModal" tabindex="-1" aria-labelledby="permissionModalLabel" aria-hidden="true"
     data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content" style="
-        background: linear-gradient(135deg, #232526 0%, #2c3e50 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-      ">
-        <div class="modal-header border-0" style="padding: 24px 24px 0 24px;">
-          <div style="width: 100%; text-align: center;">
-            <div style="
-              width: 80px;
-              height: 80px;
-              margin: 0 auto 16px;
-              background: linear-gradient(135deg, #00c3ff, #0099cc);
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 8px 24px rgba(0, 195, 255, 0.4);
-              animation: pulse 2s infinite;
-            ">
-              <i class="fa-solid fa-microphone" style="font-size: 36px; color: white;"></i>
+      <div class="modal-content welcome-modal-content">
+        <div class="modal-header welcome-modal-header">
+          <div class="welcome-icon-wrapper">
+            <div class="welcome-icon-circle">
+              <i class="fa-solid fa-microphone welcome-icon"></i>
             </div>
-            <h5 class="modal-title" id="permissionModalLabel" style="
-              color: #e0e0e0;
-              font-family: 'Montserrat', sans-serif;
-              font-size: 24px;
-              font-weight: 700;
-              margin: 0;
-            ">¡Bienvenido a pod-cast!</h5>
+            <h5 class="modal-title welcome-title" id="permissionModalLabel">¡Bienvenido a pod-cast!</h5>
           </div>
         </div>
-        <div class="modal-body" style="padding: 24px; text-align: center;">
-          <p style="
-            color: #b0b3b8;
-            font-family: 'Montserrat', sans-serif;
-            font-size: 15px;
-            line-height: 1.6;
-            margin-bottom: 20px;
-          ">
+        <div class="modal-body welcome-modal-body">
+          <p class="welcome-text">
             Para comenzar a grabar tu podcast, necesitamos acceso a tu micrófono.
           </p>
-          <div style="
-            background: rgba(0, 195, 255, 0.1);
-            border-left: 4px solid #00c3ff;
-            padding: 16px;
-            border-radius: 8px;
-            text-align: left;
-            margin-bottom: 20px;
-          ">
-            <p style="
-              color: #e0e0e0;
-              font-family: 'Montserrat', sans-serif;
-              font-size: 13px;
-              margin: 0 0 8px 0;
-              font-weight: 600;
-            ">
-              <i class="fa-solid fa-info-circle" style="color: #00c3ff;"></i> ¿Qué pasará?
+          <div class="welcome-info-box">
+            <p class="welcome-info-title">
+              <i class="fa-solid fa-info-circle welcome-info-icon"></i> ¿Qué pasará?
             </p>
-            <ul style="
-              color: #b0b3b8;
-              font-family: 'Montserrat', sans-serif;
-              font-size: 12px;
-              margin: 0;
-              padding-left: 20px;
-            ">
+            <ul class="welcome-list">
               <li>Tu navegador te pedirá permiso para usar el micrófono</li>
               <li>Haz clic en "Permitir" cuando aparezca la notificación</li>
               <li>Tus grabaciones se guardan localmente en tu navegador</li>
@@ -193,19 +146,8 @@
             </ul>
           </div>
         </div>
-        <div class="modal-footer border-0" style="padding: 0 24px 24px 24px; justify-content: center;">
-          <button type="button" class="btn btn-primary btn-lg" id="btn-allow-mic" style="
-            padding: 12px 40px;
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 700;
-            font-size: 16px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #00c3ff, #0099cc);
-            border: none;
-            box-shadow: 0 4px 16px rgba(0, 195, 255, 0.4);
-            transition: all 0.3s ease;
-          " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0, 195, 255, 0.6)'"
-            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 16px rgba(0, 195, 255, 0.4)'">
+        <div class="modal-footer welcome-modal-footer">
+          <button type="button" class="btn btn-primary btn-lg btn-welcome-primary" id="btn-allow-mic">
             <i class="fa-solid fa-microphone"></i> Activar Micrófono
           </button>
         </div>
@@ -266,6 +208,7 @@
   </script>
 
   <!-- Nuevos componentes de UI - FASE 1 -->
+  <script src="js/config.js?v=2.3.1"></script>
   <script src="js/notifications.js?v=2.3.1"></script>
   <script src="js/timer.js?v=2.3.1"></script>
   <script src="js/confirm.js?v=2.3.1"></script>

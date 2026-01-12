@@ -5,7 +5,11 @@
  */
 
 // --- Constants ---
-const SAMPLE_RATE = 44100; // Standard sample rate
+// Utiliza AppConfig si está disponible, sino fallback a defaults
+const CONFIG = window.AppConfig || { 
+    AUDIO: { SAMPLE_RATE: 44100, DEFAULT_DURATION: 60, TIMELINE_PADDING: 10 },
+    EDITOR: { CLIP_DEFAULT_COLOR: '#00c3ff' }
+};
 
 /**
  * @class Clip
@@ -28,7 +32,7 @@ class Clip {
         ];
 
         // Visual properties
-        this.color = '#00c3ff';
+        this.color = CONFIG.EDITOR.CLIP_DEFAULT_COLOR;
         this.selected = false;
         this.layer = 0; // For multi-track support eventually
     }
@@ -61,7 +65,7 @@ class EditorProject {
     constructor() {
         this.clips = []; // Array of Clip objects
         this.playhead = 0; // Current global time in seconds
-        this.duration = 60; // Total timeline duration in seconds (expandable)
+        this.duration = CONFIG.AUDIO.DEFAULT_DURATION; // Total timeline duration in seconds (expandable)
         this.isPlaying = false;
 
         // Buffers cache: key -> AudioBuffer
@@ -86,7 +90,7 @@ class EditorProject {
      */
     updateDuration() {
         const lastEnd = this.clips.reduce((max, c) => Math.max(max, c.startTime + c.duration), 0);
-        this.duration = Math.max(this.duration, lastEnd + 10);
+        this.duration = Math.max(this.duration, lastEnd + CONFIG.AUDIO.TIMELINE_PADDING);
     }
 }
 
