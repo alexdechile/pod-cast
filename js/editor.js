@@ -536,34 +536,135 @@ function bufferToWav(abuffer) {
 
 
 /**
- * Función principal para añadir clips al timeline
+ * Función principal para añadir clips al timeline (Soporta Segmentos)
  */
-async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null) {
-  console.log(`📥 Añadiendo audio: ${name}`);
+async function addAudioToDAW(blobOrUrl, name = 'Clip', trackId = null, segments = []) {
+  console.log(`📥 Añadiendo audio: ${name}, Segmentos: ${segments?.length || 0}`);
 
   const url = typeof blobOrUrl === 'string' ? blobOrUrl : URL.createObjectURL(blobOrUrl);
-  const newTrackId = trackId || `track-${Date.now()}-${trackCount++}`;
   
-  // 1. Agregar a nuestro estado global de pistas
-  tracks.push({
-      id: newTrackId,
-      url: url,
-      startPosition: 0,
-      draggable: true,
-      options: {
-        waveColor: '#00c3ff',
-        progressColor: '#0077aa'
-      },
-      // Metadatos extra para nosotros
-      _name: name 
-  });
+  // Calcular dónde insertar (al final de la pista más larga o 0)
+  // Nota: En este motor simple, startPosition define el inicio en el timeline global
+  let globalInsertionPoint = 0;
+  if (tracks.length > 0) {
+      // Buscar el punto final más lejano
+      // (Estimado, ya que no tenemos duraciones exactas sin decodificar, pero startPosition ayuda)
+      // Mejor: Si es el primer clip real, empezar en 0. Si ya hay, sumar un poco.
+      // Por simplicidad, si hay segmentos, los ponemos en una nueva "fila" visual o escalonados.
+      
+      // Vamos a buscar el max startPosition de las pistas existentes para no solapar visualmente al inicio si no se quiere
+      // Pero el usuario quiere "secuencialmente".
+  }
+
+  // Helper para tiempo
+  const timeToSeconds = (timeStr) => {
+    if (typeof timeStr === 'number') return timeStr;
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':').map(Number);
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return 0;
+  };
+
+  if (segments && segments.length > 0) {
+      // --- MODO MULTI-CLIP (Smart Split) ---
+      console.log('✂️ Aplicando Smart Split...');
+      
+      // Necesitamos la duración total para calcular el final del último segmento
+      // Como no podemos esperar a decodificar aquí síncronamente fácil, asumiremos que
+      // los segmentos cubren lo que cubren.
+      // Truco: Usaremos el mismo URL (blob) para todas las pistas generadas.
+      
+      let prevTime = 0;
+      // Ordenar segmentos
+      const sorted = [...segments].sort((a,b) => timeToSeconds(a.time) - timeToSeconds(b.time));
+      
+      // Calcular punto de inserción global: 
+      // Buscamos el final de la última pista existente para pegar estos clips después.
+      // Dado que no tenemos la duración exacta de las pistas previas en 'tracks' (solo url), 
+      // usaremos una estimación o 0 si está vacío.
+      // Para hacerlo bien, deberíamos consultar 'multitrack.durations' si existe.
+      let currentTimelinePos = 0;
+      
+      if (multitrack && multitrack.maxDuration > 0) {
+          currentTimelinePos = multitrack.maxDuration + 1; // 1 segundo de margen
+      }
+
+      // Crear una pista por cada segmento (escalonadas en el tiempo)
+      for (let i = 0; i < sorted.length; i++) {
+          const seg = sorted[i];
+          const segTime = timeToSeconds(seg.time);
+          
+          // Clip: Desde prevTime hasta segTime
+          // Si es muy corto, ignorar
+          if (segTime - prevTime > 0.5) {
+              tracks.push({
+                  id: `track-${Date.now()}-${trackCount++}`,
+                  url: url, // Mismo audio
+                  startPosition: currentTimelinePos, // Posición en el timeline global
+                  draggable: true,
+                  options: {
+                      waveColor: '#00c3ff',
+                      progressColor: '#0077aa'
+                  },
+                  // Parámetros mágicos para recortar (si el motor los soporta)
+                  startCue: prevTime,
+                  endCue: segTime,
+                  // Metadatos
+                  _name: seg.name || `Parte ${i+1}`
+              });
+              
+              // Avanzar cursor del timeline
+              currentTimelinePos += (segTime - prevTime);
+          }
+          prevTime = segTime;
+      }
+      
+      // Clip final (Resto del audio)
+      // Como no sabemos la duración total aún, no podemos poner endCue fijo fácilmente.
+      // Pero podemos poner startCue = prevTime y dejar que suene hasta el final.
+      tracks.push({
+          id: `track-${Date.now()}-${trackCount++}`,
+          url: url,
+          startPosition: currentTimelinePos,
+          draggable: true,
+          options: {
+              waveColor: '#00c3ff',
+              progressColor: '#0077aa'
+          },
+          startCue: prevTime,
+          // endCue: undefined (hasta el final)
+          _name: `${name} (Final)`
+      });
+
+  } else {
+      // --- MODO SIMPLE (Archivo completo) ---
+      
+      // Encontrar hueco al final
+      let startPos = 0;
+      if (multitrack && multitrack.maxDuration > 0) {
+          startPos = multitrack.maxDuration + 1;
+      }
+
+      const newTrackId = trackId || `track-${Date.now()}-${trackCount++}`;
+      
+      tracks.push({
+          id: newTrackId,
+          url: url,
+          startPosition: startPos,
+          draggable: true,
+          options: {
+            waveColor: '#00c3ff',
+            progressColor: '#0077aa'
+          },
+          _name: name 
+      });
+  }
 
   // 2. Re-renderizar todo el DAW
-  // Esta versión de Multitrack no soporta addTrack dinámico real, 
-  // así que recreamos la instancia preservando el estado.
   initDAW();
   
-  window.toast?.success(`Pista añadida: ${name}`);
+  window.toast?.success(`Importado: ${name}`);
 }
 
 function setupDAWDragAndDrop() {
@@ -653,13 +754,14 @@ async function loadAndAddRecording(id) {
     const req = store.get(id);
     req.onsuccess = (e) => {
         const rec = e.target.result;
-        if (rec) addAudioToDAW(rec.blob, rec.name);
+        if (rec) addAudioToDAW(rec.blob, rec.name, null, rec.segments);
     };
 }
 
 // Exportar como función global para que recorder.js pueda usarla
+// NOTA: Sobrescribimos la versión de recorder.js para integrar con este motor DAW
 window.addRecordingToEditor = (rec) => {
-    addAudioToDAW(rec.blob, rec.name);
+    addAudioToDAW(rec.blob, rec.name, null, rec.segments);
 };
 
 // Inicializar cuando el DOM esté listo
